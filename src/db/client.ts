@@ -72,6 +72,15 @@ export async function initDatabase() {
       synced_at INTEGER
     );
 
+    CREATE TABLE IF NOT EXISTS nutrition_goals (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL UNIQUE,
+      calories INTEGER DEFAULT 2200,
+      protein_g INTEGER DEFAULT 180,
+      carbs_g INTEGER DEFAULT 250,
+      fat_g INTEGER DEFAULT 70
+    );
+
     CREATE TABLE IF NOT EXISTS habits (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
