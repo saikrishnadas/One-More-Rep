@@ -40,6 +40,8 @@ export default function RootLayout() {
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.bg } }}>
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="active-workout" options={{ presentation: 'fullScreenModal' }} />
+          <Stack.Screen name="workout-summary" options={{ presentation: 'fullScreenModal' }} />
         </Stack>
       </QueryClientProvider>
     </GestureHandlerRootView>
