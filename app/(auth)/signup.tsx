@@ -20,16 +20,13 @@ export default function SignupScreen() {
       return;
     }
     setLoading(true);
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) { Alert.alert('Signup failed', error.message); setLoading(false); return; }
-
-    if (data.user) {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({ id: data.user.id, username });
-      if (profileError) { Alert.alert('Profile error', profileError.message); setLoading(false); return; }
-    }
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { username } },
+    });
     setLoading(false);
+    if (error) { Alert.alert('Signup failed', error.message); return; }
     router.replace('/(auth)/onboarding');
   }
 
