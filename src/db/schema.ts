@@ -66,6 +66,16 @@ export const nutritionLogs = sqliteTable('nutrition_logs', {
   syncedAt: integer('synced_at', { mode: 'timestamp_ms' }),
 });
 
+// Local nutrition goals
+export const nutritionGoals = sqliteTable('nutrition_goals', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().unique(),
+  calories: integer('calories').default(2200),
+  proteinG: integer('protein_g').default(180),
+  carbsG: integer('carbs_g').default(250),
+  fatG: integer('fat_g').default(70),
+});
+
 // Local habits
 export const habits = sqliteTable('habits', {
   id: text('id').primaryKey(),
