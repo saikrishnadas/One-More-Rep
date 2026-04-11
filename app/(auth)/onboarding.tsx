@@ -5,7 +5,6 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/auth';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
-import { Card } from '@/components/ui/Card';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/lib/constants';
 
 type Goal = 'lose_weight' | 'build_muscle' | 'improve_fitness' | 'powerlifting';
