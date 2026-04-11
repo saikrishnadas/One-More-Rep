@@ -42,6 +42,8 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="active-workout" options={{ presentation: 'fullScreenModal' }} />
           <Stack.Screen name="workout-summary" options={{ presentation: 'fullScreenModal' }} />
+          <Stack.Screen name="nutrition-goals" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="nutrition-report" options={{ presentation: 'card' }} />
         </Stack>
       </QueryClientProvider>
     </GestureHandlerRootView>
