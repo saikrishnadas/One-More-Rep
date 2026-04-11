@@ -4,6 +4,7 @@ import { db } from '@/db/client';
 import { nutritionLogs, nutritionGoals } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { formatDate } from '@/lib/utils';
+import { syncNutritionLogs } from '@/lib/nutrition-sync';
 
 export interface NutritionEntry {
   id: string;
@@ -118,9 +119,7 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
       ],
     });
     // Sync in background
-    import('@/lib/nutrition-sync').then(({ syncNutritionLogs }) =>
-      syncNutritionLogs(userId, date).catch(console.warn)
-    );
+    syncNutritionLogs(userId, date).catch(console.warn);
   },
 
   removeEntry: async (id) => {
