@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gym Buddy - App Structure</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0d0d0d; color: #f1f1f1; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 24px; }
+  h1 { color: #f97316; font-size: 22px; font-weight: 800; letter-spacing: 1px; margin-bottom: 4px; }
+  .subtitle { color: #9ca3af; font-size: 13px; margin-bottom: 24px; }
+
+  .tabs { display: flex; gap: 8px; margin-bottom: 28px; flex-wrap: wrap; }
+  .tab { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; padding: 10px 16px; font-size: 12px; font-weight: 600; color: #9ca3af; cursor: pointer; transition: all 0.15s; }
+  .tab:hover { border-color: #f97316; color: #f97316; }
+  .tab.active { background: #431407; border-color: #f97316; color: #f97316; }
+
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  .phone { width: 320px; background: #111; border-radius: 32px; border: 3px solid #2a2a2a; overflow: hidden; box-shadow: 0 0 40px rgba(249,115,22,0.2); margin: 0 auto; }
+  .phone-status { background: #0d0d0d; padding: 12px 20px 6px; display: flex; justify-content: space-between; align-items: center; }
+  .phone-status span { color: #666; font-size: 11px; }
+  .phone-content { padding: 0; min-height: 540px; overflow: hidden; }
+  .phone-nav { background: #111; border-top: 1px solid #2a2a2a; padding: 8px 4px 4px; display: flex; justify-content: space-around; }
+  .nav-item { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 10px; border-radius: 8px; cursor: pointer; }
+  .nav-item.active { background: #431407; }
+  .nav-item .icon { font-size: 18px; }
+  .nav-item .label { font-size: 9px; color: #9ca3af; }
+  .nav-item.active .label { color: #f97316; }
+
+  /* Screen styles */
+  .s-header { background: linear-gradient(180deg, #1c0a00 0%, #111 100%); padding: 16px; }
+  .s-header h2 { font-size: 14px; font-weight: 800; letter-spacing: 1px; color: #f97316; }
+  .s-header .greeting { font-size: 20px; font-weight: 800; color: white; margin-bottom: 2px; }
+  .s-header .sub { font-size: 11px; color: #9ca3af; }
+
+  .streak-pill { display: inline-flex; align-items: center; gap: 5px; background: linear-gradient(90deg, #f97316, #ef4444); color: white; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-top: 8px; }
+  .level-pill { display: inline-flex; align-items: center; gap: 5px; background: #431407; border: 1px solid #f97316; color: #f97316; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-top: 8px; margin-left: 6px; }
+
+  .xp-bar { margin: 12px 16px 0; }
+  .xp-label { display: flex; justify-content: space-between; font-size: 10px; color: #9ca3af; margin-bottom: 4px; }
+  .xp-track { background: #2a2a2a; border-radius: 4px; height: 6px; }
+  .xp-fill { background: linear-gradient(90deg, #f97316, #ef4444); border-radius: 4px; height: 6px; width: 68%; }
+
+  .cards-row { display: flex; gap: 8px; padding: 12px 16px 0; }
+  .mini-card { flex: 1; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; padding: 10px 8px; text-align: center; }
+  .mini-card .val { font-size: 18px; font-weight: 800; color: white; }
+  .mini-card .val span { font-size: 11px; color: #f97316; }
+  .mini-card .lbl { font-size: 9px; color: #666; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .section { padding: 12px 16px 0; }
+  .section-title { font-size: 11px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+
+  .cta-btn { margin: 12px 16px; background: linear-gradient(90deg, #f97316, #ef4444); border-radius: 12px; padding: 14px; text-align: center; font-size: 14px; font-weight: 800; color: white; letter-spacing: 1px; cursor: pointer; }
+
+  .ai-card { background: #1a1a1a; border: 1px solid #f9731640; border-radius: 12px; padding: 12px; margin-bottom: 8px; }
+  .ai-card .ai-label { font-size: 9px; color: #f97316; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
+  .ai-card .ai-text { font-size: 11px; color: #e5e7eb; line-height: 1.5; }
+  .ai-card .ai-chips { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; }
+  .ai-chip { background: #431407; border: 1px solid #f97316; color: #f97316; padding: 3px 8px; border-radius: 20px; font-size: 9px; font-weight: 600; }
+
+  .exercise-row { display: flex; align-items: center; justify-content: space-between; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px; padding: 10px 12px; margin-bottom: 6px; }
+  .exercise-row .e-name { font-size: 12px; font-weight: 700; color: white; }
+  .exercise-row .e-muscle { font-size: 10px; color: #9ca3af; }
+  .exercise-row .e-sets { font-size: 10px; color: #f97316; font-weight: 700; }
+
+  .set-row { display: flex; gap: 6px; margin-bottom: 4px; align-items: center; }
+  .set-input { background: #2a2a2a; border: 1px solid #3a3a3a; border-radius: 6px; padding: 5px 8px; font-size: 12px; color: white; width: 64px; text-align: center; }
+  .set-check { background: #f97316; border-radius: 6px; padding: 5px 8px; font-size: 12px; color: white; font-weight: 700; }
+
+  .habit-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; padding: 0 4px; }
+  .habit-cell { aspect-ratio: 1; border-radius: 3px; }
+  .habit-cell.empty { background: #2a2a2a; }
+  .habit-cell.done { background: #f97316; }
+  .habit-cell.partial { background: #78350f; }
+  .habit-cell.today { background: #f97316; box-shadow: 0 0 6px #f97316; }
+
+  .badge-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 0 4px; }
+  .badge { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px; padding: 8px; text-align: center; }
+  .badge .b-icon { font-size: 20px; margin-bottom: 3px; }
+  .badge .b-name { font-size: 8px; color: #9ca3af; }
+  .badge.unlocked { border-color: #f97316; background: #431407; }
+  .badge.unlocked .b-name { color: #f97316; }
+
+  .friends-row { display: flex; align-items: center; justify-content: space-between; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px; padding: 8px 12px; margin-bottom: 6px; }
+  .avatar { width: 30px; height: 30px; border-radius: 15px; background: linear-gradient(135deg, #f97316, #ef4444); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; color: white; }
+  .f-name { font-size: 12px; font-weight: 700; color: white; }
+  .f-sub { font-size: 10px; color: #9ca3af; }
+  .rank-badge { background: #431407; border: 1px solid #f97316; color: #f97316; padding: 3px 8px; border-radius: 20px; font-size: 10px; font-weight: 700; }
+
+  .nutrient-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .nutrient-bar-wrap { flex: 1; margin: 0 8px; }
+  .nutrient-track { background: #2a2a2a; border-radius: 4px; height: 6px; }
+  .nutrient-fill { border-radius: 4px; height: 6px; }
+  .nutrient-label { font-size: 10px; color: #9ca3af; width: 55px; }
+  .nutrient-val { font-size: 10px; color: white; font-weight: 700; width: 55px; text-align: right; }
+
+  /* Layout container */
+  .layout { display: flex; gap: 32px; align-items: flex-start; justify-content: center; flex-wrap: wrap; }
+  .desc-panel { max-width: 320px; }
+  .desc-panel h3 { color: #f97316; font-size: 16px; font-weight: 800; margin-bottom: 12px; }
+  .feature-list { list-style: none; }
+  .feature-list li { padding: 6px 0; border-bottom: 1px solid #1a1a1a; font-size: 13px; color: #d1d5db; display: flex; gap: 8px; }
+  .feature-list li::before { content: '→'; color: #f97316; flex-shrink: 0; }
+</style>
+</head>
+<body>
+<h1>🔥 GYM BUDDY</h1>
+<p class="subtitle">App structure & screen previews — click tabs to explore each section</p>
+
+<div class="tabs">
+  <div class="tab active" onclick="showScreen('home')">🏠 Home</div>
+  <div class="tab" onclick="showScreen('workout')">💪 Workout</div>
+  <div class="tab" onclick="showScreen('nutrition')">🥗 Nutrition</div>
+  <div class="tab" onclick="showScreen('habits')">🎯 Habits</div>
+  <div class="tab" onclick="showScreen('stats')">📊 Stats</div>
+  <div class="tab" onclick="showScreen('social')">👥 Social</div>
+  <div class="tab" onclick="showScreen('ai')">🤖 AI Trainer</div>
+</div>
+
+<!-- HOME -->
+<div class="screen active" id="screen-home">
+  <div class="layout">
+    <div class="phone">
+      <div class="phone-status"><span>9:41 AM</span><span>🔋</span></div>
+      <div class="phone-content">
+        <div class="s-header">
+          <div class="greeting">Good morning, Sai 👋</div>
+          <div class="sub">Ready to ignite today?</div>
+          <div>
+            <span class="streak-pill">🔥 14 day streak</span>
+            <span class="level-pill">⚡ LVL 12</span>
+          </div>
+        </div>
+        <div class="xp-bar">
+          <div class="xp-label"><span>2,800 XP</span><span>3,000 XP → LVL 13</span></div>
+          <div class="xp-track"><div class="xp-fill"></div></div>
+        </div>
+        <div class="cards-row">
+          <div class="mini-card"><div class="val">48<span>k</span></div><div class="lbl">kg this week</div></div>
+          <div class="mini-card"><div class="val">4</div><div class="lbl">workouts</div></div>
+          <div class="mini-card"><div class="val">142<span>g</span></div><div class="lbl">avg protein</div></div>
+        </div>
+        <div class="section">
+          <div class="section-title">🤖 AI Trainer Suggestion</div>
+          <div class="ai-card">
+            <div class="ai-label">⚡ TONIGHT'S MISSION</div>
+            <div class="ai-text">You hit chest on Monday. Time for back + biceps. Focus on lats — you've neglected lower lats for 2 weeks.</div>
+            <div class="ai-chips"><span class="ai-chip">Pull-ups</span><span class="ai-chip">Lat Pulldown</span><span class="ai-chip">Barbell Row</span></div>
+          </div>
+        </div>
+        <div class="cta-btn">▶ START WORKOUT</div>
+      </div>
+      <div class="phone-nav">
+        <div class="nav-item active"><div class="icon">🏠</div><div class="label">Home</div></div>
+        <div class="nav-item"><div class="icon">💪</div><div class="label">Workout</div></div>
+        <div class="nav-item"><div class="icon">🥗</div><div class="label">Nutrition</div></div>
+        <div class="nav-item"><div class="icon">👥</div><div class="label">Social</div></div>
+        <div class="nav-item"><div class="icon">👤</div><div class="label">Profile</div></div>
+      </div>
+    </div>
+    <div class="desc-panel">
+      <h3>Home / Dashboard</h3>
+      <ul class="feature-list">
+        <li>Personalized greeting + current streak</li>
+        <li>XP progress bar to next level</li>
+        <li>Weekly stats: volume, workouts, avg protein</li>
+        <li>AI Trainer daily suggestion (muscle rotation logic)</li>
+        <li>Big "Start Workout" CTA button</li>
+        <li>Quick access to habit check-ins</li>
+        <li>Recent badges unlocked</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- WORKOUT -->
+<div class="screen" id="screen-workout">
+  <div class="layout">
+    <div class="phone">
+      <div class="phone-status"><span>9:41 AM</span><span>🔋</span></div>
+      <div class="phone-content">
+        <div class="s-header">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div class="s-header h2" style="color:#f97316;font-size:12px;font-weight:800;letter-spacing:1px;">ACTIVE WORKOUT</div>
+              <div class="greeting" style="font-size:18px;">Back & Biceps</div>
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:20px;font-weight:800;color:#f97316;">42:18</div>
+              <div style="font-size:9px;color:#9ca3af;">DURATION</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;margin-top:8px;">
+            <div style="font-size:11px;color:#9ca3af;">📦 <span style="color:white;font-weight:700;">12,450 kg</span> volume</div>
+            <div style="font-size:11px;color:#9ca3af;">📋 <span style="color:white;font-weight:700;">18 sets</span></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="exercise-row">
+            <div><div class="e-name">Lat Pulldown</div><div class="e-muscle">Back · Lats</div></div>
+            <div class="e-sets">4 sets ✓</div>
+          </div>
+          <div style="padding: 0 4px 8px;">
+            <div class="set-row">
+              <span style="font-size:10px;color:#666;width:24px;">S1</span>
+              <input class="set-input" value="80" readonly><span style="font-size:10px;color:#9ca3af;">kg</span>
+              <input class="set-input" value="12" readonly><span style="font-size:10px;color:#9ca3af;">reps</span>
+              <div class="set-check">✓</div>
+            </div>
+            <div class="set-row">
+              <span style="font-size:10px;color:#666;width:24px;">S2</span>
+              <input class="set-input" value="85" readonly><span style="font-size:10px;color:#9ca3af;">kg</span>
+              <input class="set-input" value="10" readonly><span style="font-size:10px;color:#9ca3af;">reps</span>
+              <div class="set-check">✓</div>
+            </div>
+          </div>
+          <div class="exercise-row">
+            <div><div class="e-name">Barbell Row</div><div class="e-muscle">Back · Rhomboids</div></div>
+            <div class="e-sets">2 sets</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;padding:8px 16px;">
+          <div style="flex:1;background:#1a1a1a;border:1px dashed #3a3a3a;border-radius:10px;padding:10px;text-align:center;font-size:11px;color:#9ca3af;">+ Add Exercise</div>
+          <div style="background:linear-gradient(90deg,#f97316,#ef4444);border-radius:10px;padding:10px 14px;font-size:11px;font-weight:800;color:white;">END</div>
+        </div>
+      </div>
+      <div class="phone-nav">
+        <div class="nav-item"><div class="icon">🏠</div><div class="label">Home</div></div>
+        <div class="nav-item active"><div class="icon">💪</div><div class="label">Workout</div></div>
+        <div class="nav-item"><div class="icon">🥗</div><div class="label">Nutrition</div></div>
+        <div class="nav-item"><div class="icon">👥</div><div class="label">Social</div></div>
+        <div class="nav-item"><div class="icon">👤</div><div class="label">Profile</div></div>
+      </div>
+    </div>
+    <div class="desc-panel">
+      <h3>Workout Tracker</h3>
+      <ul class="feature-list">
+        <li>Live timer + real-time volume counter</li>
+        <li>Exercise search: by name, muscle group, equipment</li>
+        <li>Per-set: weight + reps, check off when done</li>
+        <li>Rest timer auto-starts between sets</li>
+        <li>Previous performance shown as reference</li>
+        <li>PR indicator 🏆 when you beat your best</li>
+        <li>End workout → full muscle group breakdown</li>
+        <li>Workout saved to history + XP awarded</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- NUTRITION -->
+<div class="screen" id="screen-nutrition">
+  <div class="layout">
+    <div class="phone">
+      <div class="phone-status"><span>9:41 AM</span><span>🔋</span></div>
+      <div class="phone-content">
+        <div class="s-header">
+          <div class="s-header h2" style="color:#f97316;font-size:12px;font-weight:800;letter-spacing:1px;">NUTRITION</div>
+          <div class="greeting" style="font-size:16px;">Today's Fuel</div>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <span class="streak-pill" style="font-size:10px;">🔥 7 days on target</span>
+          </div>
+        </div>
+        <div style="margin:12px 16px;background:#1a1a1a;border:1px solid #f9731640;border-radius:12px;padding:12px;">
+          <div style="text-align:center;margin-bottom:10px;">
+            <div style="font-size:28px;font-weight:800;color:white;">1,842 <span style="font-size:14px;color:#f97316;">/ 2,200 kcal</span></div>
+            <div style="font-size:10px;color:#9ca3af;">358 calories remaining</div>
+          </div>
+          <div class="nutrient-row">
+            <div class="nutrient-label">Protein</div>
+            <div class="nutrient-bar-wrap"><div class="nutrient-track"><div class="nutrient-fill" style="background:#f97316;width:78%;"></div></div></div>
+            <div class="nutrient-val">156 / 200g</div>
+          </div>
+          <div class="nutrient-row">
+            <div class="nutrient-label">Carbs</div>
+            <div class="nutrient-bar-wrap"><div class="nutrient-track"><div class="nutrient-fill" style="background:#3b82f6;width:60%;"></div></div></div>
+            <div class="nutrient-val">180 / 300g</div>
+          </div>
+          <div class="nutrient-row">
+            <div class="nutrient-label">Fats</div>
+            <div class="nutrient-bar-wrap"><div class="nutrient-track"><div class="nutrient-fill" style="background:#a855f7;width:85%;"></div></div></div>
+            <div class="nutrient-val">60 / 70g</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;padding:0 16px;margin-bottom:10px;">
+          <div style="flex:1;background:linear-gradient(90deg,#f97316,#ef4444);border-radius:10px;padding:10px;text-align:center;font-size:11px;font-weight:800;color:white;">+ Log Meal</div>
+          <div style="flex:1;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:10px;text-align:center;font-size:11px;color:#9ca3af;">📸 Scan Food</div>
+        </div>
+        <div class="section">
+          <div class="section-title">TODAY'S MEALS</div>
+          <div class="exercise-row"><div><div class="e-name">Chicken Rice Bowl</div><div class="e-muscle">Lunch · 650 kcal</div></div><div class="e-sets">42g 🥩</div></div>
+          <div class="exercise-row"><div><div class="e-name">Protein Shake</div><div class="e-muscle">Post-workout · 180 kcal</div></div><div class="e-sets">35g 🥩</div></div>
+        </div>
+      </div>
+      <div class="phone-nav">
+        <div class="nav-item"><div class="icon">🏠</div><div class="label">Home</div></div>
+        <div class="nav-item"><div class="icon">💪</div><div class="label">Workout</div></div>
+        <div class="nav-item active"><div class="icon">🥗</div><div class="label">Nutrition</div></div>
+        <div class="nav-item"><div class="icon">👥</div><div class="label">Social</div></div>
+        <div class="nav-item"><div class="icon">👤</div><div class="label">Profile</div></div>
+      </div>
+    </div>
+    <div class="desc-panel">
+      <h3>Nutrition Tracker</h3>
+      <ul class="feature-list">
+        <li>Daily calorie + macro ring/bars</li>
+        <li>Log meals by search, barcode scan, or custom entry</li>
+        <li>Protein/carbs/fats/fiber/water tracking</li>
+        <li>AI food recognition via camera (photo → macros)</li>
+        <li>Weekly nutrition report with streak</li>
+        <li>Goal alerts: "You're under on protein today"</li>
+        <li>Meal templates for frequent meals</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- HABITS -->
+<div class="screen" id="screen-habits">
+  <div class="layout">
+    <div class="phone">
+      <div class="phone-status"><span>9:41 AM</span><span>🔋</span></div>
+      <div class="phone-content">
+        <div class="s-header">
+          <div class="s-header h2" style="color:#f97316;font-size:12px;font-weight:800;letter-spacing:1px;">HABITS</div>
+          <div class="greeting" style="font-size:16px;">Daily Discipline</div>
+        </div>
+        <div class="section">
+          <div class="section-title">DISCIPLINE LOG</div>
+          <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:12px;margin-bottom:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <div style="font-size:12px;font-weight:700;color:white;">🚫 No Sugar</div>
+              <div style="font-size:10px;color:#f97316;font-weight:700;">21 day streak 🔥</div>
+            </div>
+            <div class="habit-grid">
+              <div class="habit-cell done"></div><div class="habit-cell done"></div><div class="habit-cell done"></div><div class="habit-cell done"></div><div class="habit-cell done"></div><div class="habit-cell done"></div><div class="habit-cell done"></div>
+              <div class="habit-cell done"></div><div class="habit-cell done"></div><div class="habit-cell done"></div><div class="habit-cell done"></div><div class="habit-cell done"></div><div class="habit-cell partial"></div><div class="habit-cell done"></div>
+              <div class="habit-cell done"></div><div class="habit-cell done"></div><div class="habit-cell done"></div><div class="habit-cell done"></div><div class="habit-cell done"></div><div class="habit-cell done"></div><div class="habit-cell today"></div>
+            </div>
+          </div>
+          <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:12px;margin-bottom:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <div style="font-size:12px;font-weight:700;color:white;">💧 8 Glasses Water</div>
+              <div style="font-size:10px;color:#f97316;font-weight:700;">14 day streak 🔥</div>
+            </div>
+            <div class="habit-grid">
+              <div class="habit-cell done"></div><div class="habit-cell done"></div><div class="habit-cell done"></div><div class="habit-cell done"></div><div class="habit-cell done"></div><div class="habit-cell done"></div><div class="habit-cell done"></div>
+              <div class="habit-cell empty"></div><div class="habit-cell done"></div><div class="habit-cell done"></div><div class="habit-cell done"></div><div class="habit-cell done"></div><div class="habit-cell done"></div><div class="habit-cell done"></div>
+              <div class="habit-cell done"></div><div class="habit-cell done"></div><div class="habit-cell done"></div><div class="habit-cell done"></div><div class="habit-cell done"></div><div class="habit-cell done"></div><div class="habit-cell today"></div>
+            </div>
+          </div>
+        </div>
+        <div style="padding:0 16px;">
+          <div style="background:#1a1a1a;border:1px dashed #3a3a3a;border-radius:10px;padding:10px;text-align:center;font-size:11px;color:#9ca3af;">+ Add New Habit</div>
+        </div>
+      </div>
+      <div class="phone-nav">
+        <div class="nav-item"><div class="icon">🏠</div><div class="label">Home</div></div>
+        <div class="nav-item"><div class="icon">💪</div><div class="label">Workout</div></div>
+        <div class="nav-item"><div class="icon">🥗</div><div class="label">Nutrition</div></div>
+        <div class="nav-item"><div class="icon">👥</div><div class="label">Social</div></div>
+        <div class="nav-item active"><div class="icon">👤</div><div class="label">Profile</div></div>
+      </div>
+    </div>
+    <div class="desc-panel">
+      <h3>Habit Tracker</h3>
+      <ul class="feature-list">
+        <li>GitHub-style contribution grid per habit</li>
+        <li>Create any habit: sugar cut, no fap, cold shower, sleep 8h, etc.</li>
+        <li>Manual check-in or push notification reminder</li>
+        <li>Streak counter + fire animation on hot streaks</li>
+        <li>Miss a day → streak resets (harsh but motivating)</li>
+        <li>Daily discipline score across all habits</li>
+        <li>XP awarded for maintaining habits</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="screen" id="screen-stats">
+  <div class="layout">
+    <div class="phone">
+      <div class="phone-status"><span>9:41 AM</span><span>🔋</span></div>
+      <div class="phone-content">
+        <div class="s-header">
+          <div class="s-header h2" style="color:#f97316;font-size:12px;font-weight:800;letter-spacing:1px;">STATS</div>
+          <div class="greeting" style="font-size:16px;">Your Progress</div>
+        </div>
+        <div class="cards-row">
+          <div class="mini-card"><div class="val">142</div><div class="lbl">workouts</div></div>
+          <div class="mini-card"><div class="val">1.2<span>M</span></div><div class="lbl">kg lifted</div></div>
+          <div class="mini-card"><div class="val">14</div><div class="lbl">streak</div></div>
+        </div>
+        <div class="section">
+          <div class="section-title">MUSCLE DISTRIBUTION</div>
+          <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:12px;">
+            <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;">
+              <div style="text-align:center;padding:6px;"><div style="font-size:22px;">💪</div><div style="font-size:10px;color:#f97316;font-weight:700;">Chest</div><div style="font-size:9px;color:#9ca3af;">28%</div></div>
+              <div style="text-align:center;padding:6px;"><div style="font-size:22px;">🦋</div><div style="font-size:10px;color:#f97316;font-weight:700;">Back</div><div style="font-size:9px;color:#9ca3af;">24%</div></div>
+              <div style="text-align:center;padding:6px;"><div style="font-size:22px;">🦵</div><div style="font-size:10px;color:#f97316;font-weight:700;">Legs</div><div style="font-size:9px;color:#9ca3af;">18%</div></div>
+              <div style="text-align:center;padding:6px;"><div style="font-size:22px;">🏋️</div><div style="font-size:10px;color:#9ca3af;">Shoulders</div><div style="font-size:9px;color:#9ca3af;">16%</div></div>
+              <div style="text-align:center;padding:6px;"><div style="font-size:22px;">💪</div><div style="font-size:10px;color:#9ca3af;">Arms</div><div style="font-size:9px;color:#9ca3af;">14%</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">BADGES</div>
+          <div class="badge-grid">
+            <div class="badge unlocked"><div class="b-icon">🔥</div><div class="b-name">On Fire</div></div>
+            <div class="badge unlocked"><div class="b-icon">🏆</div><div class="b-name">First 100</div></div>
+            <div class="badge unlocked"><div class="b-icon">💯</div><div class="b-name">Century</div></div>
+            <div class="badge"><div class="b-icon">⚡</div><div class="b-name">Level 20</div></div>
+            <div class="badge"><div class="b-icon">🗓️</div><div class="b-name">30 Day</div></div>
+            <div class="badge"><div class="b-icon">💪</div><div class="b-name">1000kg</div></div>
+            <div class="badge"><div class="b-icon">🌙</div><div class="b-name">Night Owl</div></div>
+            <div class="badge"><div class="b-icon">🎯</div><div class="b-name">Focused</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-nav">
+        <div class="nav-item"><div class="icon">🏠</div><div class="label">Home</div></div>
+        <div class="nav-item"><div class="icon">💪</div><div class="label">Workout</div></div>
+        <div class="nav-item"><div class="icon">🥗</div><div class="label">Nutrition</div></div>
+        <div class="nav-item"><div class="icon">👥</div><div class="label">Social</div></div>
+        <div class="nav-item active"><div class="icon">👤</div><div class="label">Profile</div></div>
+      </div>
+    </div>
+    <div class="desc-panel">
+      <h3>Stats & Reports</h3>
+      <ul class="feature-list">
+        <li>All-time totals: workouts, kg lifted, hours</li>
+        <li>Muscle distribution chart (main + sub groups)</li>
+        <li>Calendar heatmap (GitHub-style)</li>
+        <li>PRs per exercise + all-time bests</li>
+        <li>Weekly/monthly volume charts</li>
+        <li>Streak history + best streak</li>
+        <li>Goal tracker: "100kg bench by June"</li>
+        <li>Badge shelf — all earned achievements</li>
+        <li>Top 5 exercises by volume/frequency</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- SOCIAL -->
+<div class="screen" id="screen-social">
+  <div class="layout">
+    <div class="phone">
+      <div class="phone-status"><span>9:41 AM</span><span>🔋</span></div>
+      <div class="phone-content">
+        <div class="s-header">
+          <div class="s-header h2" style="color:#f97316;font-size:12px;font-weight:800;letter-spacing:1px;">SOCIAL</div>
+          <div class="greeting" style="font-size:16px;">Leaderboard 🏆</div>
+        </div>
+        <div class="section">
+          <div class="section-title">THIS WEEK · VOLUME</div>
+          <div class="friends-row">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="color:#f97316;font-weight:800;font-size:14px;width:20px;">1</div>
+              <div class="avatar">S</div>
+              <div><div class="f-name">Sai (You)</div><div class="f-sub">54,200 kg</div></div>
+            </div>
+            <span class="rank-badge">🔥 ON FIRE</span>
+          </div>
+          <div class="friends-row">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="color:#9ca3af;font-weight:800;font-size:14px;width:20px;">2</div>
+              <div class="avatar" style="background:linear-gradient(135deg,#3b82f6,#8b5cf6);">R</div>
+              <div><div class="f-name">Rahul</div><div class="f-sub">48,900 kg</div></div>
+            </div>
+            <span class="rank-badge" style="border-color:#9ca3af;color:#9ca3af;">LVL 14</span>
+          </div>
+          <div class="friends-row">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="color:#9ca3af;font-weight:800;font-size:14px;width:20px;">3</div>
+              <div class="avatar" style="background:linear-gradient(135deg,#10b981,#3b82f6);">A</div>
+              <div><div class="f-name">Arjun</div><div class="f-sub">39,200 kg</div></div>
+            </div>
+            <span class="rank-badge" style="border-color:#9ca3af;color:#9ca3af;">LVL 9</span>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">ACTIVITY FEED</div>
+          <div class="exercise-row"><div><div class="e-name">Rahul hit a new PR 🏆</div><div class="e-muscle">Bench Press · 120kg · 2h ago</div></div><div>❤️</div></div>
+          <div class="exercise-row"><div><div class="e-name">Arjun completed a 5-day streak</div><div class="e-muscle">🔥 No Sugar · 3h ago</div></div><div>🔥</div></div>
+        </div>
+      </div>
+      <div class="phone-nav">
+        <div class="nav-item"><div class="icon">🏠</div><div class="label">Home</div></div>
+        <div class="nav-item"><div class="icon">💪</div><div class="label">Workout</div></div>
+        <div class="nav-item"><div class="icon">🥗</div><div class="label">Nutrition</div></div>
+        <div class="nav-item active"><div class="icon">👥</div><div class="label">Social</div></div>
+        <div class="nav-item"><div class="icon">👤</div><div class="label">Profile</div></div>
+      </div>
+    </div>
+    <div class="desc-panel">
+      <h3>Social</h3>
+      <ul class="feature-list">
+        <li>Friend system — add by username</li>
+        <li>Weekly leaderboard: volume, streak, XP</li>
+        <li>Activity feed: PRs, streaks, badge unlocks</li>
+        <li>React to friend achievements (🔥 ❤️ 💪)</li>
+        <li>Challenge a friend: "Who lifts more this week?"</li>
+        <li>Shareable workout card (beautiful image for Instagram/WhatsApp)</li>
+        <li>Public profile with badge showcase</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- AI TRAINER -->
+<div class="screen" id="screen-ai">
+  <div class="layout">
+    <div class="phone">
+      <div class="phone-status"><span>9:41 AM</span><span>🔋</span></div>
+      <div class="phone-content">
+        <div class="s-header">
+          <div class="s-header h2" style="color:#f97316;font-size:12px;font-weight:800;letter-spacing:1px;">AI TRAINER</div>
+          <div class="greeting" style="font-size:16px;">Your Coach 🤖</div>
+        </div>
+        <div class="section">
+          <div class="ai-card" style="margin-bottom:8px;">
+            <div class="ai-label">⚡ TODAY'S RECOMMENDATION</div>
+            <div class="ai-text">You've done chest 3x in 2 weeks — all upper chest. Time to hit <strong style="color:#f97316;">lower pec + triceps</strong>. You've also neglected hamstrings for 10 days.</div>
+            <div class="ai-chips"><span class="ai-chip">Decline Press</span><span class="ai-chip">Cable Fly</span><span class="ai-chip">Romanian Deadlift</span><span class="ai-chip">Lying Curl</span></div>
+          </div>
+          <div class="ai-card" style="margin-bottom:8px;">
+            <div class="ai-label">📈 PROGRESSIVE OVERLOAD</div>
+            <div class="ai-text">Bench Press: You've done 80kg × 8 for 3 sessions. Ready to push to <strong style="color:#f97316;">82.5kg</strong> or increase to 10 reps at 80kg.</div>
+            <div class="ai-chips"><span class="ai-chip">+ 2.5kg</span><span class="ai-chip">+ 2 reps</span></div>
+          </div>
+          <div class="ai-card">
+            <div class="ai-label">🗓️ WEEKLY PLAN PREVIEW</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">
+              <div style="background:#431407;border:1px solid #f97316;border-radius:6px;padding:4px 6px;font-size:9px;color:#f97316;">Mon · Chest</div>
+              <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;padding:4px 6px;font-size:9px;color:#9ca3af;">Tue · Rest</div>
+              <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;padding:4px 6px;font-size:9px;color:#9ca3af;">Wed · Back</div>
+              <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;padding:4px 6px;font-size:9px;color:#9ca3af;">Thu · Legs</div>
+              <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;padding:4px 6px;font-size:9px;color:#9ca3af;">Fri · Push</div>
+              <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;padding:4px 6px;font-size:9px;color:#9ca3af;">Sat · Pull</div>
+              <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;padding:4px 6px;font-size:9px;color:#9ca3af;">Sun · Rest</div>
+            </div>
+          </div>
+        </div>
+        <div class="cta-btn" style="font-size:12px;">💬 CHAT WITH TRAINER</div>
+      </div>
+      <div class="phone-nav">
+        <div class="nav-item"><div class="icon">🏠</div><div class="label">Home</div></div>
+        <div class="nav-item"><div class="icon">💪</div><div class="label">Workout</div></div>
+        <div class="nav-item"><div class="icon">🥗</div><div class="label">Nutrition</div></div>
+        <div class="nav-item"><div class="icon">👥</div><div class="label">Social</div></div>
+        <div class="nav-item active"><div class="icon">👤</div><div class="label">Profile</div></div>
+      </div>
+    </div>
+    <div class="desc-panel">
+      <h3>AI Personal Trainer</h3>
+      <ul class="feature-list">
+        <li>Daily workout recommendation based on history</li>
+        <li>Muscle rotation: ensures all groups hit weekly</li>
+        <li>Sub-muscle targeting: upper/lower/mid chest, etc.</li>
+        <li>Progressive overload nudges per exercise</li>
+        <li>Weekly program generation (PPL, Upper/Lower, etc.)</li>
+        <li>Chat interface: "I only have 30 min today"</li>
+        <li>Injury awareness: "avoid squats — rest knees"</li>
+        <li>Nutrition-workout synergy: "you're in a deficit, lower intensity"</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>

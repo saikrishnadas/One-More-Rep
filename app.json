@@ -31,7 +31,9 @@
       "expo-sqlite",
       [
         "expo-camera",
-        { "cameraPermission": "Allow Gym Buddy to scan barcodes." }
+        {
+          "cameraPermission": "Allow Gym Buddy to scan barcodes."
+        }
       ],
       [
         "expo-notifications",
@@ -39,7 +41,8 @@
           "icon": "./assets/icon.png",
           "color": "#f97316"
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true
