@@ -7,6 +7,7 @@ import { StyleSheet } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/auth';
 import { initDatabase } from '@/db/client';
+import { seedExercises } from '@/db/seed';
 import { Colors } from '@/lib/constants';
 
 const queryClient = new QueryClient();
@@ -15,8 +16,8 @@ export default function RootLayout() {
   const { setSession, fetchProfile } = useAuthStore();
 
   useEffect(() => {
-    // Initialize local DB
-    initDatabase();
+    // Initialize local DB and seed exercises
+    initDatabase().then(() => seedExercises());
 
     // Listen for auth changes
     supabase.auth.getSession().then(({ data: { session } }) => {
