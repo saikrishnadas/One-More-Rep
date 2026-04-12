@@ -219,6 +219,17 @@ export default function ProfileScreen() {
           </Card>
         </TouchableOpacity>
 
+        {/* Goal Date Estimate link */}
+        <TouchableOpacity onPress={() => router.push('/goal-estimate')}>
+          <Card style={{ gap: 4 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
+              <Target size={18} color={Colors.primary} />
+              <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.bold, color: Colors.textPrimary }}>Goal Date Estimate</Text>
+            </View>
+            <Text variant="caption">When will you reach your goal? →</Text>
+          </Card>
+        </TouchableOpacity>
+
         {/* Export My Data link */}
         <TouchableOpacity onPress={() => router.push('/export')} style={styles.exportLink}>
           <Card style={styles.exportCard}>
