@@ -9,7 +9,10 @@ import { useAuthStore } from '@/stores/auth';
 import { initDatabase } from '@/db/client';
 import { seedExercises } from '@/db/seed';
 import { Colors } from '@/lib/constants';
-import { registerForPushNotifications } from '@/lib/notifications';
+import * as Notifications from 'expo-notifications';
+import { registerForPushNotifications, setupNotificationCategories } from '@/lib/notifications';
+import { useHabitStore } from '@/stores/habits';
+import { formatDate } from '@/lib/utils';
 
 const queryClient = new QueryClient();
 
@@ -33,6 +36,24 @@ export default function RootLayout() {
     });
 
     return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    setupNotificationCategories();
+
+    const sub = Notifications.addNotificationResponseReceivedListener(async (response) => {
+      const data = response.notification.request.content.data as any;
+      if (data?.type === 'habit_checkin' && data?.habitId) {
+        if (response.actionIdentifier === 'DONE') {
+          const userId = useAuthStore.getState().user?.id;
+          if (userId) {
+            await useHabitStore.getState().toggleHabit(userId, data.habitId, formatDate(new Date()));
+          }
+        }
+      }
+    });
+
+    return () => sub.remove();
   }, []);
 
   return (

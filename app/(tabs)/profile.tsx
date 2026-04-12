@@ -19,7 +19,7 @@ import { HabitIcon } from '@/components/ui/HabitIcon';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/lib/constants';
 import { formatDate } from '@/lib/utils';
 import { syncHabits } from '@/lib/habit-sync';
-import { scheduleStreakAlert, cancelHabitReminder } from '@/lib/notifications';
+import { scheduleStreakAlert, cancelHabitReminder, scheduleHabitReminderInteractive } from '@/lib/notifications';
 
 export default function ProfileScreen() {
   const { user, profile, signOut } = useAuthStore();
@@ -50,7 +50,11 @@ export default function ProfileScreen() {
     await loadHabits(user.id);
     const newHabit = useHabitStore.getState().habits.find(h => h.name === data.name);
     if (newHabit) {
-      await scheduleStreakAlert(newHabit.id, newHabit.name).catch(console.warn);
+      if (newHabit.reminderTime) {
+        await scheduleHabitReminderInteractive(newHabit.id, newHabit.name, newHabit.reminderTime).catch(console.warn);
+      } else {
+        await scheduleStreakAlert(newHabit.id, newHabit.name).catch(console.warn);
+      }
     }
   }
 
