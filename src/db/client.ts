@@ -101,5 +101,61 @@ export async function initDatabase() {
       synced_at INTEGER,
       UNIQUE(habit_id, date)
     );
+
+    CREATE TABLE IF NOT EXISTS workout_templates (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT,
+      exercise_count INTEGER DEFAULT 0,
+      created_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS template_exercises (
+      id TEXT PRIMARY KEY,
+      template_id TEXT NOT NULL,
+      exercise_id TEXT NOT NULL,
+      exercise_name TEXT NOT NULL,
+      sets INTEGER DEFAULT 3,
+      target_reps INTEGER DEFAULT 10,
+      target_weight_kg REAL DEFAULT 0,
+      order_index INTEGER DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS body_measurements (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      date TEXT NOT NULL,
+      weight_kg REAL,
+      chest_cm REAL,
+      waist_cm REAL,
+      hips_cm REAL,
+      arms_cm REAL,
+      thighs_cm REAL,
+      neck_cm REAL,
+      height_cm REAL,
+      body_fat_pct REAL,
+      notes TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS meal_templates (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      calories REAL NOT NULL,
+      protein_g REAL DEFAULT 0,
+      carbs_g REAL DEFAULT 0,
+      fat_g REAL DEFAULT 0,
+      fiber_g REAL DEFAULT 0,
+      meal_type TEXT,
+      usage_count INTEGER DEFAULT 0
+    );
   `);
+
+  // Migrate: add rpe column to workout_sets if not exists
+  try {
+    await sqliteDb.execAsync('ALTER TABLE workout_sets ADD COLUMN rpe REAL;');
+  } catch {
+    // Column already exists - ignore
+  }
 }

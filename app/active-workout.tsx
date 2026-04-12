@@ -8,28 +8,43 @@ import { useWorkoutStore } from '@/stores/workout';
 import { useAuthStore } from '@/stores/auth';
 import { ExerciseBlock } from '@/components/workout/ExerciseBlock';
 import { ExerciseSearchModal } from '@/components/workout/ExerciseSearchModal';
+import { RestTimerOverlay } from '@/components/workout/RestTimerOverlay';
+import { PlateCalculatorModal } from '@/components/workout/PlateCalculatorModal';
+import { useRestTimerStore } from '@/stores/restTimer';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { Colors, Spacing, FontSize, FontWeight } from '@/lib/constants';
 import { formatDuration, calculateWorkoutXp } from '@/lib/utils';
 import * as Haptics from 'expo-haptics';
+import { X, Dumbbell } from 'lucide-react-native';
+import { getMuscleRecovery, MuscleRecovery } from '@/lib/muscle-recovery';
 
 export default function ActiveWorkoutScreen() {
   const {
     isActive, startWorkout, exercises, elapsedSeconds,
     addExercise, removeExercise, addSet,
-    updateSet, completeSet, uncompleteSet,
+    updateSet, completeSet, uncompleteSet, updateSetRpe,
     finishWorkout, discardWorkout, tick,
   } = useWorkoutStore();
-  const { user } = useAuthStore();
+  const { user, profile } = useAuthStore();
+  const restTimerActive = useRestTimerStore((s) => s.active);
   const [showSearch, setShowSearch] = useState(false);
+  const [muscleRecovery, setMuscleRecovery] = useState<Record<string, MuscleRecovery>>({});
   const [finishing, setFinishing] = useState(false);
+  const [plateCalcVisible, setPlateCalcVisible] = useState(false);
+  const [plateCalcWeight, setPlateCalcWeight] = useState(60);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Start workout on mount if not already active
   useEffect(() => {
     if (!isActive) startWorkout();
   }, []);
+
+  // Load muscle recovery status
+  useEffect(() => {
+    if (!user) return;
+    getMuscleRecovery(user.id, profile?.goal).then(setMuscleRecovery);
+  }, [user?.id]);
 
   // Timer
   useEffect(() => {
@@ -79,6 +94,13 @@ export default function ActiveWorkoutScreen() {
     ]);
   }
 
+  function openPlateCalculator() {
+    const allSets = exercises.flatMap((e) => e.sets);
+    const lastWeight = allSets.filter((s) => s.weightKg > 0).slice(-1)[0]?.weightKg ?? 60;
+    setPlateCalcWeight(lastWeight);
+    setPlateCalcVisible(true);
+  }
+
   function handleDiscard() {
     Alert.alert('Discard Workout?', 'All progress will be lost.', [
       { text: 'Keep Going', style: 'cancel' },
@@ -91,7 +113,10 @@ export default function ActiveWorkoutScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleDiscard}>
-          <Text style={styles.discardBtn}>✕</Text>
+          <X size={22} color={Colors.textSecondary} />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={openPlateCalculator} style={styles.plateCalcBtn}>
+          <Dumbbell size={22} color={Colors.textPrimary} />
         </TouchableOpacity>
         <View style={styles.timerBlock}>
           <Text style={styles.timer}>{formatDuration(elapsedSeconds)}</Text>
@@ -130,6 +155,8 @@ export default function ActiveWorkoutScreen() {
             onRepsChange={(setId, v) => updateSet(exercise.exerciseId, setId, 'reps', v)}
             onCompleteSet={(setId) => { completeSet(exercise.exerciseId, setId); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }}
             onUncompleteSet={(setId) => uncompleteSet(exercise.exerciseId, setId)}
+            onRpeChange={(setId, rpe) => updateSetRpe(setId, rpe)}
+            recoveryStatus={muscleRecovery[exercise.primaryMuscle]?.status}
           />
         ))}
 
@@ -147,6 +174,14 @@ export default function ActiveWorkoutScreen() {
         onClose={() => setShowSearch(false)}
         onSelect={(ex) => { addExercise(ex); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
       />
+
+      {restTimerActive && <RestTimerOverlay />}
+
+      <PlateCalculatorModal
+        visible={plateCalcVisible}
+        initialWeightKg={plateCalcWeight}
+        onClose={() => setPlateCalcVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -158,7 +193,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md,
     borderBottomWidth: 1, borderBottomColor: Colors.bgCardBorder,
   },
-  discardBtn: { fontSize: 20, color: Colors.textSecondary, padding: 4 },
+  plateCalcBtn: { padding: 4 },
   timerBlock: { alignItems: 'center' },
   timer: { fontSize: FontSize.xl, fontWeight: FontWeight.heavy, color: Colors.textPrimary },
   finishBtn: { paddingVertical: 10, paddingHorizontal: Spacing.lg },

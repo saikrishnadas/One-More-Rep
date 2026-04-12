@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, FlatList, StyleSheet } from 'react-native';
+import { View, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { db } from '@/db/client';
@@ -10,7 +10,12 @@ import { Text } from '@/components/ui/Text';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Colors, Spacing, FontSize, FontWeight } from '@/lib/constants';
+import { ClipboardList, BarChart2, Timer } from 'lucide-react-native';
 import { formatDuration, formatVolume } from '@/lib/utils';
+import { TemplatesModal } from '@/components/workout/TemplatesModal';
+import { useTemplatesStore } from '@/stores/templates';
+import { useWorkoutStore } from '@/stores/workout';
+import type { WorkoutTemplate, TemplateExercise } from '@/stores/templates';
 
 interface SessionRow {
   id: string;
@@ -24,6 +29,8 @@ interface SessionRow {
 export default function WorkoutScreen() {
   const { user } = useAuthStore();
   const [sessions, setSessions] = useState<SessionRow[]>([]);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const { startWorkout, addExercise } = useWorkoutStore();
 
   useEffect(() => {
     if (!user) return;
@@ -40,11 +47,34 @@ export default function WorkoutScreen() {
     });
   }
 
+  async function handleStartFromTemplate(template: WorkoutTemplate, exercises: TemplateExercise[]) {
+    if (!user) return;
+    startWorkout(user.id);
+    for (const ex of exercises) {
+      addExercise({
+        id: ex.exerciseId,
+        name: ex.exerciseName,
+        primaryMuscle: '',
+        subMuscles: [],
+        equipment: '',
+      });
+    }
+    router.push('/active-workout');
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text variant="heading">Workout History</Text>
-        <Button label="▶ Start" onPress={() => router.push('/active-workout')} variant="primary" style={styles.startBtn} />
+        <Text variant="heading" numberOfLines={1} style={{ flex: 1 }}>Workout History</Text>
+        <View style={styles.headerBtns}>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => setShowTemplates(true)}>
+            <ClipboardList size={20} color={Colors.textPrimary} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/workout-stats')}>
+            <BarChart2 size={20} color={Colors.textPrimary} />
+          </TouchableOpacity>
+          <Button label="Start" onPress={() => router.push('/active-workout')} variant="primary" style={styles.startBtn} />
+        </View>
       </View>
 
       <FlatList
@@ -61,7 +91,10 @@ export default function WorkoutScreen() {
               <Text style={styles.volumeText}>{formatVolume(item.totalVolumeKg ?? 0)} kg</Text>
             </View>
             <View style={styles.cardStats}>
-              <Text variant="caption">⏱ {formatDuration(item.durationSeconds ?? 0)}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Timer size={12} color={Colors.textSecondary} />
+                <Text variant="caption">{formatDuration(item.durationSeconds ?? 0)}</Text>
+              </View>
               <Text variant="caption">·</Text>
               <Text variant="caption">{item.setCount ?? 0} sets</Text>
             </View>
@@ -75,6 +108,12 @@ export default function WorkoutScreen() {
           </View>
         }
       />
+
+      <TemplatesModal
+        visible={showTemplates}
+        onClose={() => setShowTemplates(false)}
+        onSelect={handleStartFromTemplate}
+      />
     </SafeAreaView>
   );
 }
@@ -82,10 +121,13 @@ export default function WorkoutScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
   header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    padding: Spacing.xl, paddingBottom: Spacing.md,
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md,
+    gap: Spacing.sm,
   },
   startBtn: { paddingVertical: 8, paddingHorizontal: Spacing.md },
+  headerBtns: { flexDirection: 'row', gap: Spacing.sm },
+  iconBtn: { padding: 8, alignItems: 'center', justifyContent: 'center' },
   list: { padding: Spacing.xl, paddingTop: 0, gap: Spacing.md },
   sessionCard: { gap: Spacing.sm },
   cardRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },

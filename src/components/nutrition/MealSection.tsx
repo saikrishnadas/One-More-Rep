@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from '@/components/ui/Text';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/lib/constants';
+import { ChevronUp, ChevronDown, X } from 'lucide-react-native';
 import type { NutritionEntry } from '@/stores/nutrition';
 
 interface MealSectionProps {
   title: string;
-  icon: string;
+  icon: React.ReactNode;
   entries: NutritionEntry[];
   onAdd: () => void;
   onRemove: (id: string) => void;
@@ -21,12 +22,12 @@ export function MealSection({ title, icon, entries, onAdd, onRemove }: MealSecti
       {/* Section header */}
       <TouchableOpacity style={styles.header} onPress={() => setExpanded((v) => !v)} activeOpacity={0.7}>
         <View style={styles.headerLeft}>
-          <Text style={styles.icon}>{icon}</Text>
+          <View style={styles.iconContainer}>{icon}</View>
           <Text variant="title">{title}</Text>
         </View>
         <View style={styles.headerRight}>
           <Text variant="caption">{Math.round(totalCals)} kcal</Text>
-          <Text style={styles.chevron}>{expanded ? '▲' : '▼'}</Text>
+          {expanded ? <ChevronUp size={14} color={Colors.textMuted} /> : <ChevronDown size={14} color={Colors.textMuted} />}
         </View>
       </TouchableOpacity>
 
@@ -42,7 +43,7 @@ export function MealSection({ title, icon, entries, onAdd, onRemove }: MealSecti
                 </Text>
               </View>
               <TouchableOpacity onPress={() => onRemove(entry.id)} hitSlop={8} style={styles.removeBtn}>
-                <Text style={styles.removeIcon}>✕</Text>
+                <X size={14} color={Colors.textMuted} />
               </TouchableOpacity>
             </View>
           ))}
@@ -74,8 +75,7 @@ const styles = StyleSheet.create({
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  icon: { fontSize: 18 },
-  chevron: { fontSize: FontSize.xs, color: Colors.textMuted },
+  iconContainer: { width: 22, height: 22, alignItems: 'center', justifyContent: 'center' },
   items: { borderTopWidth: 1, borderTopColor: Colors.bgCardBorder },
   entryRow: {
     flexDirection: 'row',
@@ -87,7 +87,6 @@ const styles = StyleSheet.create({
   },
   entryInfo: { flex: 1 },
   removeBtn: { padding: 4 },
-  removeIcon: { fontSize: FontSize.sm, color: Colors.textMuted },
   addBtn: {
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.lg,

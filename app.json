@@ -8,6 +8,8 @@
     "scheme": "gymbuddy",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
+    "description": "Your AI-powered fitness companion — workouts, nutrition, habits & social",
+    "privacy": "public",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -15,7 +17,15 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.gymbuddy.app"
+      "bundleIdentifier": "com.gymbuddy.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSHealthShareUsageDescription": "Gym Buddy reads your step count to show your daily activity.",
+        "NSHealthUpdateUsageDescription": "Gym Buddy writes workout data to Apple Health.",
+        "NSMotionUsageDescription": "Gym Buddy uses motion data to count your steps.",
+        "NSCameraUsageDescription": "Gym Buddy uses the camera to scan food barcodes.",
+        "NSSpeechRecognitionUsageDescription": "Gym Buddy may use speech recognition for voice logging."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -24,7 +34,13 @@
       },
       "package": "com.gymbuddy.app",
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.ACTIVITY_RECOGNITION",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -46,6 +62,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "87ada62e-033b-4a11-807a-1440dfbf0638"
+      },
+      "router": {}
+    },
+    "owner": "saikrishnadas"
   }
 }

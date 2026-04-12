@@ -1,9 +1,21 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from '@/components/ui/Text';
+import { X, Flame } from 'lucide-react-native';
 import { SetRow } from './SetRow';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/lib/constants';
 import type { ActiveExercise } from '@/stores/workout';
+import { useWorkoutStore } from '@/stores/workout';
+import { getSuggestion, OverloadSuggestion } from '@/lib/progressive-overload';
+import { useAuthStore } from '@/stores/auth';
+import type { RecoveryStatus } from '@/lib/muscle-recovery';
+import { getWarmupSets } from '@/lib/warmup-calculator';
+
+const RECOVERY_DOT_COLOR: Record<RecoveryStatus, string> = {
+  fresh:      Colors.success,
+  recovering: Colors.warning,
+  fatigued:   Colors.secondary,
+};
 
 interface ExerciseBlockProps {
   exercise: ActiveExercise;
@@ -13,6 +25,8 @@ interface ExerciseBlockProps {
   onRepsChange: (setId: string, value: number) => void;
   onCompleteSet: (setId: string) => void;
   onUncompleteSet: (setId: string) => void;
+  onRpeChange: (setId: string, rpe: number | null) => void;
+  recoveryStatus?: RecoveryStatus;
 }
 
 const MUSCLE_COLORS: Record<string, string> = {
@@ -24,15 +38,42 @@ const MUSCLE_COLORS: Record<string, string> = {
 
 export function ExerciseBlock({
   exercise, onAddSet, onRemove,
-  onWeightChange, onRepsChange, onCompleteSet, onUncompleteSet,
+  onWeightChange, onRepsChange, onCompleteSet, onUncompleteSet, onRpeChange,
+  recoveryStatus,
 }: ExerciseBlockProps) {
   const muscleColor = MUSCLE_COLORS[exercise.primaryMuscle] ?? Colors.primary;
   const completedCount = exercise.sets.filter((s) => s.completed).length;
+  const [suggestion, setSuggestion] = useState<OverloadSuggestion | null>(null);
+  const { user } = useAuthStore();
+  const { addWarmupSets } = useWorkoutStore();
+
+  const hasWarmups = exercise.sets.some((s) => (s as any).isWarmup);
+  const hasWorkingSets = exercise.sets.some((s) => s.weightKg > 0);
+
+  useEffect(() => {
+    if (!user || !exercise.exerciseId) return;
+    getSuggestion(exercise.exerciseId, user.id).then(setSuggestion);
+  }, [exercise.exerciseId, user?.id]);
+
+  function handleAddWarmups() {
+    const targetWeight = exercise.sets.find((s) => s.weightKg > 0)?.weightKg ?? 0;
+    if (!targetWeight) return;
+    const warmups = getWarmupSets(targetWeight);
+    addWarmupSets(exercise.exerciseId, warmups);
+  }
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={[styles.muscleDot, { backgroundColor: muscleColor }]} />
+        {recoveryStatus !== undefined && (
+          <View
+            style={[
+              styles.recoveryDot,
+              { backgroundColor: RECOVERY_DOT_COLOR[recoveryStatus] },
+            ]}
+          />
+        )}
         <View style={styles.titleBlock}>
           <Text variant="title">{exercise.exerciseName}</Text>
           <Text variant="caption" style={{ color: muscleColor }}>
@@ -40,9 +81,20 @@ export function ExerciseBlock({
           </Text>
         </View>
         <TouchableOpacity onPress={onRemove} style={styles.removeBtn} hitSlop={8}>
-          <Text style={styles.removeIcon}>✕</Text>
+          <X size={16} color={Colors.textMuted} />
         </TouchableOpacity>
       </View>
+
+      {suggestion && (
+        <View style={styles.suggestionChip}>
+          <Text style={styles.suggestionText}>
+            {'\u{1F4A1}'} {suggestion.message}
+            {suggestion.lastDate
+              ? ` \u00b7 was ${suggestion.lastWeightKg}kg \u00d7 ${suggestion.lastReps} (${suggestion.lastDate})`
+              : ''}
+          </Text>
+        </View>
+      )}
 
       <View style={styles.colHeaders}>
         <Text style={[styles.colLabel, { width: 24 }]}>#</Text>
@@ -52,15 +104,28 @@ export function ExerciseBlock({
       </View>
 
       {exercise.sets.map((set) => (
-        <SetRow
-          key={set.id}
-          set={set}
-          onWeightChange={(v) => onWeightChange(set.id, v)}
-          onRepsChange={(v) => onRepsChange(set.id, v)}
-          onComplete={() => onCompleteSet(set.id)}
-          onUncomplete={() => onUncompleteSet(set.id)}
-        />
+        <View key={set.id}>
+          {(set as any).isWarmup && (
+            <Text style={styles.warmupTag}>WARM-UP</Text>
+          )}
+          <SetRow
+            set={set}
+            exerciseName={exercise.exerciseName}
+            onWeightChange={(v) => onWeightChange(set.id, v)}
+            onRepsChange={(v) => onRepsChange(set.id, v)}
+            onComplete={() => onCompleteSet(set.id)}
+            onUncomplete={() => onUncompleteSet(set.id)}
+            onRpeChange={(rpe) => onRpeChange(set.id, rpe)}
+          />
+        </View>
       ))}
+
+      {!hasWarmups && hasWorkingSets && (
+        <TouchableOpacity style={styles.warmupBtn} onPress={handleAddWarmups}>
+          <Flame size={14} color={Colors.warning} />
+          <Text style={styles.warmupBtnText}>Add Warm-ups</Text>
+        </TouchableOpacity>
+      )}
 
       <TouchableOpacity style={styles.addSetBtn} onPress={onAddSet}>
         <Text style={styles.addSetText}>+ Add Set</Text>
@@ -80,11 +145,38 @@ const styles = StyleSheet.create({
   },
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.md, gap: Spacing.sm },
   muscleDot: { width: 10, height: 10, borderRadius: 5, marginTop: 2 },
+  recoveryDot: { width: 6, height: 6, borderRadius: 3, marginTop: 2 },
   titleBlock: { flex: 1 },
   removeBtn: { padding: 4 },
-  removeIcon: { fontSize: FontSize.sm, color: Colors.textMuted },
+  suggestionChip: {
+    backgroundColor: Colors.bgHighlight,
+    borderColor: Colors.primary + '40',
+    borderWidth: 1,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    marginBottom: Spacing.sm,
+  },
+  suggestionText: {
+    fontSize: FontSize.sm,
+    color: Colors.primary,
+  },
   colHeaders: { flexDirection: 'row', marginBottom: 4, gap: Spacing.sm },
   colLabel: { fontSize: FontSize.xs, color: Colors.textMuted, fontWeight: FontWeight.bold, textTransform: 'uppercase' },
+  warmupTag: { fontSize: FontSize.xs, color: Colors.warning, fontWeight: FontWeight.bold, marginBottom: 2 },
+  warmupBtn: {
+    marginTop: Spacing.xs,
+    paddingVertical: Spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.warning + '60',
+    borderRadius: Radius.md,
+    borderStyle: 'dashed',
+  },
+  warmupBtnText: { fontSize: FontSize.sm, color: Colors.warning, fontWeight: FontWeight.bold },
   addSetBtn: {
     marginTop: Spacing.sm,
     paddingVertical: Spacing.sm,

@@ -10,23 +10,26 @@ import { CalorieRing } from '@/components/nutrition/CalorieRing';
 import { MacroBar } from '@/components/nutrition/MacroBar';
 import { MealSection } from '@/components/nutrition/MealSection';
 import { AddFoodModal } from '@/components/nutrition/AddFoodModal';
-import { Colors, Spacing } from '@/lib/constants';
+import { AutoGoalsModal } from '@/components/nutrition/AutoGoalsModal';
+import { Colors, Spacing, FontSize, FontWeight } from '@/lib/constants';
+import { Settings, Zap, Dumbbell, BarChart2, Sunrise, Sun, Moon, Cookie } from 'lucide-react-native';
 import { formatDate } from '@/lib/utils';
 import type { NutritionEntry } from '@/stores/nutrition';
 
 type MealType = NutritionEntry['mealType'];
 
-const MEALS: { type: MealType; title: string; icon: string }[] = [
-  { type: 'breakfast', title: 'Breakfast', icon: '🌅' },
-  { type: 'lunch',     title: 'Lunch',     icon: '☀️' },
-  { type: 'dinner',    title: 'Dinner',    icon: '🌙' },
-  { type: 'snack',     title: 'Snacks',    icon: '🍎' },
+const MEALS: { type: MealType; title: string; icon: React.ReactNode }[] = [
+  { type: 'breakfast', title: 'Breakfast', icon: <Sunrise size={18} color={Colors.textSecondary} /> },
+  { type: 'lunch',     title: 'Lunch',     icon: <Sun size={18} color={Colors.textSecondary} /> },
+  { type: 'dinner',    title: 'Dinner',    icon: <Moon size={18} color={Colors.textSecondary} /> },
+  { type: 'snack',     title: 'Snacks',    icon: <Cookie size={18} color={Colors.textSecondary} /> },
 ];
 
 export default function NutritionScreen() {
   const { user } = useAuthStore();
-  const { entries, goals, selectedDate, loadDay, loadGoals, addEntry, removeEntry, setSelectedDate } = useNutritionStore();
+  const { entries, goals, selectedDate, loadDay, loadGoals, saveGoals, addEntry, removeEntry, setSelectedDate, workoutCaloriesBurned } = useNutritionStore();
   const [activeMeal, setActiveMeal] = useState<MealType | null>(null);
+  const [showAutoGoals, setShowAutoGoals] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -78,10 +81,39 @@ export default function NutritionScreen() {
           </View>
         </Card>
 
+        {/* Workout burn deduction */}
+        {workoutCaloriesBurned > 0 && (
+          <Card style={{ gap: 4 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Dumbbell size={14} color={Colors.warning} />
+                <Text variant="label">Workout Burn</Text>
+              </View>
+              <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.bold, color: Colors.warning }}>
+                -{workoutCaloriesBurned} kcal
+              </Text>
+            </View>
+            <Text variant="caption">
+              Net: {Math.max(0, totalCalories - workoutCaloriesBurned)} kcal consumed
+            </Text>
+          </Card>
+        )}
+
         {/* Goals link */}
-        <TouchableOpacity onPress={() => router.push('/nutrition-goals')} style={styles.goalsLink}>
-          <Text style={styles.goalsLinkText}>⚙️ Edit Goals · {goals.calories} kcal target</Text>
-        </TouchableOpacity>
+        <View style={styles.goalsRow}>
+          <TouchableOpacity onPress={() => router.push('/nutrition-goals')} style={styles.goalsLink}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Settings size={14} color={Colors.textMuted} />
+              <Text style={styles.goalsLinkText}>Edit Goals · {goals.calories} kcal target</Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setShowAutoGoals(true)} style={styles.autoBtn}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Zap size={14} color={Colors.primary} />
+              <Text style={styles.autoBtnText}>Auto</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
 
         {/* Meal sections */}
         {MEALS.map((meal) => (
@@ -97,9 +129,18 @@ export default function NutritionScreen() {
 
         {/* Weekly report link */}
         <TouchableOpacity onPress={() => router.push('/nutrition-report')} style={styles.reportLink}>
-          <Text style={styles.reportLinkText}>📊 View Weekly Report →</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <BarChart2 size={14} color={Colors.primary} />
+            <Text style={styles.reportLinkText}>View Weekly Report →</Text>
+          </View>
         </TouchableOpacity>
       </ScrollView>
+
+      <AutoGoalsModal
+        visible={showAutoGoals}
+        onClose={() => setShowAutoGoals(false)}
+        onApply={(g) => { if (user) saveGoals(user.id, g); setShowAutoGoals(false); }}
+      />
 
       {/* Add food modal */}
       {activeMeal && (
@@ -108,6 +149,7 @@ export default function NutritionScreen() {
           mealType={activeMeal}
           onClose={() => setActiveMeal(null)}
           onAdd={(entry) => { if (user) addEntry(user.id, entry); }}
+          userId={user?.id}
         />
       )}
     </SafeAreaView>
@@ -127,8 +169,18 @@ const styles = StyleSheet.create({
   summaryCard: { marginBottom: Spacing.md },
   ringRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xl },
   macros: { flex: 1, gap: Spacing.md },
-  goalsLink: { alignItems: 'center', marginBottom: Spacing.lg },
+  goalsRow: { flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.lg, gap: Spacing.sm },
+  goalsLink: { flex: 1, alignItems: 'center' },
   goalsLinkText: { fontSize: 13, color: Colors.textSecondary },
+  autoBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: Spacing.md,
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    borderRadius: 8,
+  },
+  autoBtnText: { fontSize: 13, color: Colors.primary, fontWeight: '700' },
   reportLink: { alignItems: 'center', marginTop: Spacing.sm, marginBottom: Spacing.xl },
   reportLinkText: { fontSize: 13, color: Colors.primary },
 });

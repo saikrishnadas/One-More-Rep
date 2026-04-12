@@ -1,13 +1,21 @@
-import React, { useEffect } from 'react';
-import { View, ScrollView, StyleSheet } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, ScrollView, StyleSheet, TextInput, Alert, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
+import ViewShot from 'react-native-view-shot';
+import * as Sharing from 'expo-sharing';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Text } from '@/components/ui/Text';
+import { ShareCard } from '@/components/workout/ShareCard';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/lib/constants';
 import { formatDuration, formatVolume } from '@/lib/utils';
 import { syncWorkoutSession } from '@/lib/workout-sync';
+import { estimateWorkoutCalories } from '@/lib/calorie-burn';
+import { useTemplatesStore } from '@/stores/templates';
+import { useWorkoutStore } from '@/stores/workout';
+import { useAuthStore } from '@/stores/auth';
+import { useNutritionStore } from '@/stores/nutrition';
 
 const MUSCLE_COLORS: Record<string, string> = {
   chest: '#ef4444', back: '#3b82f6', shoulders: '#a855f7',
@@ -25,14 +33,34 @@ export default function WorkoutSummaryScreen() {
     prCount: string;
     musclesWorked: string;
     xpEarned: string;
+    sessionName: string;
   }>();
 
-  // Sync to Supabase in background
-  useEffect(() => {
-    if (params.sessionId) {
-      syncWorkoutSession(params.sessionId).catch(console.warn);
+  const { user, profile } = useAuthStore();
+  const { saveTemplate } = useTemplatesStore();
+  const { exercises: workoutExercises } = useWorkoutStore();
+  const { setWorkoutBurn } = useNutritionStore();
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [templateName, setTemplateName] = useState(params.sessionName ?? 'My Workout');
+  const [showTemplateSave, setShowTemplateSave] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const shareCardRef = useRef<View>(null);
+
+  async function handleShare() {
+    if (!shareCardRef.current) return;
+    setSharing(true);
+    try {
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (!isAvailable) { Alert.alert('Sharing not available on this device'); return; }
+      const uri = await (shareCardRef.current as any).capture?.();
+      if (!uri) { Alert.alert('Could not capture card'); return; }
+      await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Share your workout!' });
+    } catch (e) {
+      Alert.alert('Error', 'Could not share workout card.');
+    } finally {
+      setSharing(false);
     }
-  }, []);
+  }
 
   const duration = parseInt(params.durationSeconds ?? '0');
   const volume = parseFloat(params.totalVolumeKg ?? '0');
@@ -40,6 +68,35 @@ export default function WorkoutSummaryScreen() {
   const prs = parseInt(params.prCount ?? '0');
   const muscles = params.musclesWorked ? params.musclesWorked.split(',').filter(Boolean) : [];
   const xp = parseInt(params.xpEarned ?? '0');
+  const caloriesBurned = estimateWorkoutCalories(duration, volume, profile?.bodyweightKg ?? 70);
+
+  // Sync to Supabase in background
+  useEffect(() => {
+    if (params.sessionId) {
+      syncWorkoutSession(params.sessionId).catch(console.warn);
+    }
+    setWorkoutBurn(caloriesBurned);
+  }, []);
+
+  async function handleSaveTemplate() {
+    if (!user) return;
+    setSavingTemplate(true);
+    try {
+      const exerciseList = workoutExercises.map(ex => ({
+        exerciseId: ex.exerciseId,
+        exerciseName: ex.exerciseName,
+        sets: ex.sets.filter(s => s.completed).length || ex.sets.length || 3,
+        targetReps: ex.sets.find(s => s.completed)?.reps ?? ex.sets[0]?.reps ?? 10,
+        targetWeightKg: Math.max(...ex.sets.filter(s => s.completed).map(s => s.weightKg), 0) || 0,
+      }));
+      if (exerciseList.length === 0) { Alert.alert('No exercises to save'); return; }
+      await saveTemplate(user.id, templateName, exerciseList);
+      Alert.alert('Saved!', `"${templateName}" saved as a template.`);
+      setShowTemplateSave(false);
+    } finally {
+      setSavingTemplate(false);
+    }
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -55,6 +112,15 @@ export default function WorkoutSummaryScreen() {
           <Text variant="label" color={Colors.primary}>⚡ XP EARNED</Text>
           <Text style={styles.xpValue}>+{xp} XP</Text>
         </Card>
+
+        {/* Calorie burn card */}
+        {caloriesBurned > 0 && (
+          <Card style={styles.burnCard}>
+            <Text variant="label" color={Colors.warning}>🔥 ESTIMATED BURN</Text>
+            <Text style={styles.burnValue}>~{caloriesBurned} kcal</Text>
+            <Text variant="caption">Based on {formatDuration(duration)} workout, {formatVolume(volume)}kg volume</Text>
+          </Card>
+        )}
 
         {/* Stats grid */}
         <View style={styles.statsGrid}>
@@ -97,6 +163,60 @@ export default function WorkoutSummaryScreen() {
           </Card>
         )}
 
+        {/* Share card (hidden, used for capture) */}
+        <View style={styles.shareCardWrapper}>
+          <ViewShot ref={shareCardRef as any} options={{ format: 'png', quality: 1.0 }}>
+            <ShareCard
+              username={profile?.username ?? 'athlete'}
+              durationSeconds={duration}
+              totalVolumeKg={volume}
+              setCount={sets}
+              prCount={prs}
+              xpEarned={xp}
+              muscles={muscles}
+            />
+          </ViewShot>
+        </View>
+
+        {/* Share button */}
+        <TouchableOpacity style={styles.shareBtn} onPress={handleShare} disabled={sharing}>
+          <Text style={styles.shareBtnText}>{sharing ? '⏳ Capturing...' : '📸 Share Workout Card'}</Text>
+        </TouchableOpacity>
+
+        {/* Save as Template */}
+        {!showTemplateSave ? (
+          <TouchableOpacity
+            style={styles.templateBtn}
+            onPress={() => setShowTemplateSave(true)}
+          >
+            <Text style={styles.templateBtnText}>📋 Save as Template</Text>
+          </TouchableOpacity>
+        ) : (
+          <Card style={styles.templateCard}>
+            <Text variant="label" style={{ marginBottom: Spacing.sm }}>Template Name</Text>
+            <TextInput
+              style={styles.templateInput}
+              value={templateName}
+              onChangeText={setTemplateName}
+              placeholder="My Workout"
+              placeholderTextColor={Colors.textMuted}
+            />
+            <View style={styles.templateBtns}>
+              <Button
+                label={savingTemplate ? 'Saving...' : 'SAVE TEMPLATE'}
+                onPress={handleSaveTemplate}
+                loading={savingTemplate}
+                style={{ flex: 1 }}
+              />
+              <Button
+                label="Cancel"
+                onPress={() => setShowTemplateSave(false)}
+                variant="ghost"
+              />
+            </View>
+          </Card>
+        )}
+
         <Button label="Back to Home" onPress={() => router.replace('/(tabs)')} style={styles.homeBtn} />
       </ScrollView>
     </SafeAreaView>
@@ -110,6 +230,8 @@ const styles = StyleSheet.create({
   heroTitle: { textAlign: 'center' },
   xpCard: { width: '100%', alignItems: 'center', gap: Spacing.sm },
   xpValue: { fontSize: FontSize.display, fontWeight: FontWeight.heavy, color: Colors.primary },
+  burnCard: { width: '100%', alignItems: 'center', gap: Spacing.sm },
+  burnValue: { fontSize: FontSize.xxxl, fontWeight: FontWeight.heavy, color: Colors.warning },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, width: '100%' },
   statCard: { flex: 1, minWidth: '45%', alignItems: 'center', gap: 4 },
   musclesCard: { width: '100%' },
@@ -121,4 +243,29 @@ const styles = StyleSheet.create({
   muscleChipText: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, textTransform: 'uppercase' },
   prCard: { width: '100%' },
   homeBtn: { width: '100%', marginTop: Spacing.md },
+  templateBtn: { alignItems: 'center', paddingVertical: Spacing.md },
+  templateBtnText: { fontSize: FontSize.sm, color: Colors.textSecondary, fontWeight: FontWeight.bold },
+  templateCard: { gap: Spacing.md, width: '100%' },
+  templateInput: {
+    backgroundColor: Colors.bg, borderWidth: 1, borderColor: Colors.bgCardBorder,
+    borderRadius: Radius.md, padding: Spacing.md, color: Colors.textPrimary, fontSize: FontSize.base,
+  },
+  templateBtns: { flexDirection: 'row', gap: Spacing.sm, alignItems: 'center' },
+  shareCardWrapper: {
+    // Position off-screen but still rendered so ViewShot can capture it
+    position: 'absolute',
+    top: -9999,
+    left: 0,
+    opacity: 0,
+  },
+  shareBtn: {
+    alignItems: 'center',
+    paddingVertical: Spacing.md,
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.primary + '60',
+    borderRadius: Radius.lg,
+    width: '100%',
+  },
+  shareBtnText: { fontSize: FontSize.sm, color: Colors.primary, fontWeight: FontWeight.bold },
 });

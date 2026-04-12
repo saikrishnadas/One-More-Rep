@@ -48,6 +48,7 @@ export const workoutSets = sqliteTable('workout_sets', {
   reps: integer('reps').notNull(),
   isPr: integer('is_pr', { mode: 'boolean' }).default(false),
   completedAt: integer('completed_at', { mode: 'timestamp_ms' }),
+  rpe: real('rpe'),  // nullable, 1-10
 });
 
 // Local nutrition logs
@@ -96,4 +97,55 @@ export const habitLogs = sqliteTable('habit_logs', {
   completed: integer('completed', { mode: 'boolean' }).default(false),
   countValue: integer('count_value').default(0),
   syncedAt: integer('synced_at', { mode: 'timestamp_ms' }),
+});
+
+// Workout templates
+export const workoutTemplates = sqliteTable('workout_templates', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  name: text('name').notNull(),
+  description: text('description'),
+  exerciseCount: integer('exercise_count').default(0),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+});
+
+// Template exercises (ordered)
+export const templateExercises = sqliteTable('template_exercises', {
+  id: text('id').primaryKey(),
+  templateId: text('template_id').notNull(),
+  exerciseId: text('exercise_id').notNull(),
+  exerciseName: text('exercise_name').notNull(),
+  sets: integer('sets').default(3),
+  targetReps: integer('target_reps').default(10),
+  targetWeightKg: real('target_weight_kg').default(0),
+  orderIndex: integer('order_index').default(0),
+});
+
+export const bodyMeasurements = sqliteTable('body_measurements', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  date: text('date').notNull(), // 'YYYY-MM-DD'
+  weightKg: real('weight_kg'),
+  chestCm: real('chest_cm'),
+  waistCm: real('waist_cm'),
+  hipsCm: real('hips_cm'),
+  armsCm: real('arms_cm'),
+  thighsCm: real('thighs_cm'),
+  neckCm: real('neck_cm'),
+  heightCm: real('height_cm'),
+  bodyFatPct: real('body_fat_pct'),
+  notes: text('notes'),
+});
+
+export const mealTemplates = sqliteTable('meal_templates', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  name: text('name').notNull(),
+  calories: real('calories').notNull(),
+  proteinG: real('protein_g').default(0),
+  carbsG: real('carbs_g').default(0),
+  fatG: real('fat_g').default(0),
+  fiberG: real('fiber_g').default(0),
+  mealType: text('meal_type'),
+  usageCount: integer('usage_count').default(0),
 });

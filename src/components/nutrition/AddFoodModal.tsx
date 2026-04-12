@@ -1,16 +1,18 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
-  View, Modal, TextInput, FlatList, TouchableOpacity,
-  StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, Alert,
+  View, Modal, TextInput, TouchableOpacity,
+  StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, Alert, FlatList,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Text } from '@/components/ui/Text';
 import { Button } from '@/components/ui/Button';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/lib/constants';
 import { searchFood, lookupBarcode, FoodSearchResult } from '@/lib/open-food-facts';
+import { searchIndianFoods, IndianFood } from '@/data/indian-foods';
 import type { NutritionEntry } from '@/stores/nutrition';
+import { useMealTemplatesStore } from '@/stores/mealTemplates';
 
-type Tab = 'search' | 'manual' | 'barcode';
+type Tab = 'search' | 'manual' | 'barcode' | 'saved';
 type MealType = NutritionEntry['mealType'];
 
 interface Props {
@@ -18,11 +20,12 @@ interface Props {
   mealType: MealType;
   onClose: () => void;
   onAdd: (entry: Omit<NutritionEntry, 'id' | 'userId' | 'date'>) => void;
+  userId?: string;
 }
 
 const EMPTY_MANUAL = { foodName: '', calories: '', proteinG: '', carbsG: '', fatG: '', fiberG: '' };
 
-export function AddFoodModal({ visible, mealType, onClose, onAdd }: Props) {
+export function AddFoodModal({ visible, mealType, onClose, onAdd, userId }: Props) {
   const [tab, setTab] = useState<Tab>('search');
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<FoodSearchResult[]>([]);
@@ -31,6 +34,18 @@ export function AddFoodModal({ visible, mealType, onClose, onAdd }: Props) {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const { templates, loading: templatesLoading, load, save, deleteTemplate, incrementUsage } = useMealTemplatesStore();
+
+  const indianResults = searchIndianFoods(query);
+  const hasQuery = query.length >= 2;
+
+  // Load templates when the saved tab is shown and userId is available
+  useEffect(() => {
+    if (visible && tab === 'saved' && userId) {
+      load(userId);
+    }
+  }, [visible, tab, userId]);
 
   function handleQueryChange(text: string) {
     setQuery(text);
@@ -61,6 +76,20 @@ export function AddFoodModal({ visible, mealType, onClose, onAdd }: Props) {
     onClose();
   }
 
+  function handleSelectIndianFood(item: IndianFood) {
+    onAdd({
+      mealType,
+      foodName: item.name,
+      calories: item.calories,
+      proteinG: item.proteinG,
+      carbsG: item.carbsG,
+      fatG: item.fatG,
+      fiberG: item.fiberG,
+      source: 'manual',
+    });
+    onClose();
+  }
+
   function handleManualAdd() {
     if (!manual.foodName || !manual.calories) {
       Alert.alert('Required', 'Food name and calories are required.');
@@ -80,6 +109,27 @@ export function AddFoodModal({ visible, mealType, onClose, onAdd }: Props) {
     onClose();
   }
 
+  async function handleSaveAsTemplate() {
+    if (!manual.foodName || !manual.calories) {
+      Alert.alert('Required', 'Food name and calories are required to save a template.');
+      return;
+    }
+    if (!userId) {
+      Alert.alert('Error', 'You must be logged in to save templates.');
+      return;
+    }
+    await save(userId, {
+      name: manual.foodName,
+      calories: parseFloat(manual.calories) || 0,
+      proteinG: parseFloat(manual.proteinG) || 0,
+      carbsG: parseFloat(manual.carbsG) || 0,
+      fatG: parseFloat(manual.fatG) || 0,
+      fiberG: parseFloat(manual.fiberG) || 0,
+      mealType: mealType ?? null,
+    });
+    Alert.alert('Saved!', `"${manual.foodName}" has been saved as a template.`);
+  }
+
   async function handleBarcodeScan({ data }: { data: string }) {
     if (scanned) return;
     setScanned(true);
@@ -97,6 +147,38 @@ export function AddFoodModal({ visible, mealType, onClose, onAdd }: Props) {
         { text: 'OK', onPress: () => setScanned(false) },
       ]);
     }
+  }
+
+  async function handleTemplatePress(templateId: string) {
+    const template = templates.find(t => t.id === templateId);
+    if (!template) return;
+    await incrementUsage(templateId);
+    onAdd({
+      mealType,
+      foodName: template.name,
+      calories: template.calories,
+      proteinG: template.proteinG,
+      carbsG: template.carbsG,
+      fatG: template.fatG,
+      fiberG: template.fiberG,
+      source: 'template',
+    });
+    onClose();
+  }
+
+  function handleTemplateLongPress(templateId: string, templateName: string) {
+    Alert.alert(
+      'Delete Template',
+      `Are you sure you want to delete "${templateName}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => deleteTemplate(templateId),
+        },
+      ],
+    );
   }
 
   function handleClose() {
@@ -121,17 +203,23 @@ export function AddFoodModal({ visible, mealType, onClose, onAdd }: Props) {
 
         {/* Tabs */}
         <View style={styles.tabs}>
-          {(['search', 'manual', 'barcode'] as Tab[]).map((t) => (
-            <TouchableOpacity
-              key={t}
-              style={[styles.tab, tab === t && styles.tabActive]}
-              onPress={() => setTab(t)}
-            >
-              <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>
-                {t === 'search' ? '🔍 Search' : t === 'manual' ? '✏️ Manual' : '📷 Scan'}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {(['search', 'manual', 'barcode', 'saved'] as Tab[]).map((t) => {
+            const icon = t === 'search' ? '🔍' : t === 'manual' ? '✏️' : t === 'barcode' ? '📷' : '⭐';
+            const label = t === 'search' ? 'Search' : t === 'manual' ? 'Manual' : t === 'barcode' ? 'Scan' : 'Saved';
+            const isActive = tab === t;
+            return (
+              <TouchableOpacity
+                key={t}
+                style={[styles.tab, isActive && styles.tabActive]}
+                onPress={() => setTab(t)}
+              >
+                <Text style={styles.tabIcon}>{icon}</Text>
+                {isActive && (
+                  <Text style={styles.tabLabel}>{label}</Text>
+                )}
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {/* Search tab */}
@@ -147,28 +235,69 @@ export function AddFoodModal({ visible, mealType, onClose, onAdd }: Props) {
               clearButtonMode="while-editing"
             />
             {searching && <ActivityIndicator color={Colors.primary} style={{ marginTop: Spacing.md }} />}
-            <FlatList
-              data={results}
-              keyExtractor={(_, i) => String(i)}
-              renderItem={({ item }) => (
-                <TouchableOpacity style={styles.resultRow} onPress={() => handleSelectResult(item)} activeOpacity={0.7}>
-                  <View style={styles.resultInfo}>
-                    <Text variant="body">{item.name}</Text>
-                    <Text variant="caption">
-                      {item.brand ? `${item.brand} · ` : ''}{item.calories} kcal · P:{item.proteinG}g · C:{item.carbsG}g · F:{item.fatG}g
+            <ScrollView keyboardShouldPersistTaps="handled" style={styles.resultsScroll}>
+              {/* Indian Foods Section */}
+              {indianResults.length > 0 && (
+                <>
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionHeaderText}>
+                      {hasQuery ? '🇮🇳 Indian' : '🇮🇳 Indian Foods'}
                     </Text>
-                    {item.servingSize ? <Text variant="caption">Per {item.servingSize}</Text> : null}
                   </View>
-                  <Text style={styles.addIcon}>+</Text>
-                </TouchableOpacity>
+                  {indianResults.map((item) => (
+                    <React.Fragment key={item.id}>
+                      <TouchableOpacity
+                        style={styles.resultRow}
+                        onPress={() => handleSelectIndianFood(item)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.resultInfo}>
+                          <Text variant="body">🇮🇳 {item.name}</Text>
+                          <Text variant="caption">
+                            {item.servingSize} · {item.calories} kcal · P:{item.proteinG}g · C:{item.carbsG}g · F:{item.fatG}g
+                          </Text>
+                        </View>
+                        <Text style={styles.addIcon}>+</Text>
+                      </TouchableOpacity>
+                      <View style={styles.separator} />
+                    </React.Fragment>
+                  ))}
+                </>
               )}
-              ItemSeparatorComponent={() => <View style={styles.separator} />}
-              ListEmptyComponent={
-                query.length >= 2 && !searching
-                  ? <Text variant="caption" style={styles.empty}>No results found</Text>
-                  : null
-              }
-            />
+
+              {/* Open Food Facts Section */}
+              {hasQuery && results.length > 0 && (
+                <>
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionHeaderText}>🌐 Database</Text>
+                  </View>
+                  {results.map((item, i) => (
+                    <React.Fragment key={i}>
+                      <TouchableOpacity
+                        style={styles.resultRow}
+                        onPress={() => handleSelectResult(item)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.resultInfo}>
+                          <Text variant="body">{item.name}</Text>
+                          <Text variant="caption">
+                            {item.brand ? `${item.brand} · ` : ''}{item.calories} kcal · P:{item.proteinG}g · C:{item.carbsG}g · F:{item.fatG}g
+                          </Text>
+                          {item.servingSize ? <Text variant="caption">Per {item.servingSize}</Text> : null}
+                        </View>
+                        <Text style={styles.addIcon}>+</Text>
+                      </TouchableOpacity>
+                      <View style={styles.separator} />
+                    </React.Fragment>
+                  ))}
+                </>
+              )}
+
+              {/* Empty state for OFT when searching */}
+              {hasQuery && !searching && results.length === 0 && indianResults.length === 0 && (
+                <Text variant="caption" style={styles.empty}>No results found</Text>
+              )}
+            </ScrollView>
           </>
         )}
 
@@ -216,6 +345,9 @@ export function AddFoodModal({ visible, mealType, onClose, onAdd }: Props) {
               keyboardType="decimal-pad" value={manual.fiberG}
               onChangeText={(v) => setManual((m) => ({ ...m, fiberG: v }))} />
             <Button label="ADD FOOD" onPress={handleManualAdd} style={styles.addBtn} />
+            <TouchableOpacity style={styles.saveTemplateBtn} onPress={handleSaveAsTemplate}>
+              <Text style={styles.saveTemplateBtnText}>⭐ Save as Template</Text>
+            </TouchableOpacity>
           </ScrollView>
         )}
 
@@ -247,6 +379,48 @@ export function AddFoodModal({ visible, mealType, onClose, onAdd }: Props) {
             )}
           </View>
         )}
+
+        {/* Saved tab */}
+        {tab === 'saved' && (
+          <View style={styles.savedContainer}>
+            {templatesLoading ? (
+              <ActivityIndicator color={Colors.primary} style={{ marginTop: Spacing.xl }} />
+            ) : templates.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text variant="body" style={styles.emptyStateTitle}>No saved templates yet</Text>
+                <Text variant="caption" style={styles.emptyStateSubtitle}>
+                  Go to the Manual tab and tap "Save as Template" to save a food for quick reuse.
+                </Text>
+              </View>
+            ) : (
+              <FlatList
+                data={templates}
+                keyExtractor={(item) => item.id}
+                ItemSeparatorComponent={() => <View style={styles.separator} />}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.resultRow}
+                    onPress={() => handleTemplatePress(item.id)}
+                    onLongPress={() => handleTemplateLongPress(item.id, item.name)}
+                    activeOpacity={0.7}
+                    delayLongPress={400}
+                  >
+                    <View style={styles.resultInfo}>
+                      <Text variant="body">{item.name}</Text>
+                      <Text variant="caption">
+                        {item.calories} kcal · P:{item.proteinG}g · C:{item.carbsG}g · F:{item.fatG}g
+                      </Text>
+                      {item.usageCount > 0 && (
+                        <Text style={styles.usageCount}>Used {item.usageCount}×</Text>
+                      )}
+                    </View>
+                    <Text style={styles.addIcon}>+</Text>
+                  </TouchableOpacity>
+                )}
+              />
+            )}
+          </View>
+        )}
       </SafeAreaView>
     </Modal>
   );
@@ -267,14 +441,28 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     padding: 4,
   },
-  tab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: Radius.sm },
+  tab: { flex: 1, paddingVertical: 7, alignItems: 'center', borderRadius: Radius.sm, flexDirection: 'row', justifyContent: 'center', gap: 4 },
   tabActive: { backgroundColor: Colors.bgHighlight },
-  tabText: { fontSize: FontSize.sm, color: Colors.textSecondary, fontWeight: FontWeight.bold },
-  tabTextActive: { color: Colors.primary },
+  tabIcon: { fontSize: 15 },
+  tabLabel: { fontSize: FontSize.xs, color: Colors.primary, fontWeight: FontWeight.bold },
   searchInput: {
     marginHorizontal: Spacing.xl, marginBottom: Spacing.sm,
     backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.bgCardBorder,
     borderRadius: Radius.md, padding: Spacing.md, color: Colors.textPrimary, fontSize: FontSize.base,
+  },
+  resultsScroll: { flex: 1 },
+  sectionHeader: {
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.sm,
+    backgroundColor: Colors.bgCard,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.bgCardBorder,
+  },
+  sectionHeaderText: {
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+    fontWeight: FontWeight.bold,
+    letterSpacing: 0.5,
   },
   resultRow: {
     flexDirection: 'row', alignItems: 'center',
@@ -293,6 +481,19 @@ const styles = StyleSheet.create({
   row2: { flexDirection: 'row', gap: Spacing.sm },
   halfField: { flex: 1 },
   addBtn: { marginTop: Spacing.lg },
+  saveTemplateBtn: {
+    marginTop: Spacing.sm,
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.warning,
+    borderRadius: Radius.md,
+  },
+  saveTemplateBtnText: {
+    fontSize: FontSize.base,
+    color: Colors.warning,
+    fontWeight: FontWeight.bold,
+  },
   cameraContainer: { flex: 1, position: 'relative' },
   camera: { flex: 1 },
   permissionView: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: Spacing.xxl },
@@ -311,4 +512,26 @@ const styles = StyleSheet.create({
   },
   scanHint: { marginTop: Spacing.xl, color: Colors.textPrimary },
   scanLoader: { position: 'absolute', bottom: 80, alignSelf: 'center' },
+  savedContainer: { flex: 1 },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.xxl,
+  },
+  emptyStateTitle: {
+    color: Colors.textSecondary,
+    marginBottom: Spacing.sm,
+    textAlign: 'center',
+  },
+  emptyStateSubtitle: {
+    color: Colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  usageCount: {
+    fontSize: FontSize.xs,
+    color: Colors.warning,
+    marginTop: 2,
+  },
 });

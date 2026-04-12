@@ -3,6 +3,7 @@ import { randomUUID } from 'expo-crypto';
 import { db } from '@/db/client';
 import { workoutSessions, workoutSets } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import type { WarmupSet } from '@/lib/warmup-calculator';
 
 export interface ActiveSet {
   id: string;
@@ -11,6 +12,8 @@ export interface ActiveSet {
   reps: number;
   completed: boolean;
   isPr: boolean;
+  rpe?: number | null;
+  isWarmup?: boolean;
 }
 
 export interface ActiveExercise {
@@ -44,6 +47,8 @@ interface WorkoutState {
   markSetPr: (exerciseId: string, setId: string, isPr: boolean) => void;
   completeSet: (exerciseId: string, setId: string) => Promise<void>;
   uncompleteSet: (exerciseId: string, setId: string) => void;
+  updateSetRpe: (setId: string, rpe: number | null) => Promise<void>;
+  addWarmupSets: (exerciseId: string, warmupWeights: WarmupSet[]) => void;
   finishWorkout: (userId: string) => Promise<WorkoutSummary>;
   discardWorkout: () => void;
   tick: () => void;
@@ -186,12 +191,42 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
     });
   },
 
+  updateSetRpe: async (setId, rpe) => {
+    set((s) => ({
+      exercises: s.exercises.map((ex) => ({
+        ...ex,
+        sets: ex.sets.map((s) => (s.id === setId ? { ...s, rpe } : s)),
+      })),
+    }));
+    await db.update(workoutSets).set({ rpe }).where(eq(workoutSets.id, setId));
+  },
+
+  addWarmupSets: (exerciseId, warmupWeights) => {
+    set((s) => ({
+      exercises: s.exercises.map((ex) => {
+        if (ex.exerciseId !== exerciseId) return ex;
+        const newWarmupSets = warmupWeights.map((w, i) => ({
+          id: randomUUID(),
+          setNumber: -(warmupWeights.length - i), // -3, -2, -1 for 3 warmups
+          weightKg: w.weightKg,
+          reps: w.reps,
+          completed: false,
+          isPr: false,
+          isWarmup: true,
+        }));
+        // Renumber existing sets starting from 1
+        const existingSets = ex.sets.map((s, i) => ({ ...s, setNumber: i + 1 }));
+        return { ...ex, sets: [...newWarmupSets, ...existingSets] };
+      }),
+    }));
+  },
+
   finishWorkout: async (userId: string) => {
     const { sessionId, startedAt, exercises, elapsedSeconds } = get();
     if (!sessionId || !startedAt) throw new Error('No active workout');
 
     const completedSets = exercises.flatMap((e) =>
-      e.sets.filter((s) => s.completed).map((s) => ({ ...s, exerciseId: e.exerciseId }))
+      e.sets.filter((s) => s.completed && !s.isWarmup).map((s) => ({ ...s, exerciseId: e.exerciseId }))
     );
 
     const totalVolumeKg = completedSets.reduce(
@@ -223,6 +258,7 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
           reps: s.reps,
           isPr: s.isPr,
           completedAt: new Date(),
+          rpe: s.rpe ?? null,
         }))
       );
     }

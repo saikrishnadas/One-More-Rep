@@ -32,6 +32,7 @@ interface NutritionState {
   goals: NutritionGoals;
   selectedDate: string;
   isLoading: boolean;
+  workoutCaloriesBurned: number;
 
   loadDay: (userId: string, date?: string) => Promise<void>;
   loadGoals: (userId: string) => Promise<void>;
@@ -39,6 +40,7 @@ interface NutritionState {
   removeEntry: (id: string) => Promise<void>;
   saveGoals: (userId: string, goals: NutritionGoals) => Promise<void>;
   setSelectedDate: (date: string) => void;
+  setWorkoutBurn: (kcal: number) => void;
 }
 
 const DEFAULT_GOALS: NutritionGoals = {
@@ -53,6 +55,7 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
   goals: DEFAULT_GOALS,
   selectedDate: formatDate(new Date()),
   isLoading: false,
+  workoutCaloriesBurned: 0,
 
   loadDay: async (userId, date) => {
     const targetDate = date ?? get().selectedDate;
@@ -142,4 +145,6 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
   },
 
   setSelectedDate: (date) => set({ selectedDate: date }),
+
+  setWorkoutBurn: (kcal) => set({ workoutCaloriesBurned: kcal }),
 }));

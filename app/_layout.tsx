@@ -9,6 +9,7 @@ import { useAuthStore } from '@/stores/auth';
 import { initDatabase } from '@/db/client';
 import { seedExercises } from '@/db/seed';
 import { Colors } from '@/lib/constants';
+import { registerForPushNotifications } from '@/lib/notifications';
 
 const queryClient = new QueryClient();
 
@@ -18,6 +19,7 @@ export default function RootLayout() {
   useEffect(() => {
     // Initialize local DB and seed exercises
     initDatabase().then(() => seedExercises());
+    registerForPushNotifications().catch(console.warn);
 
     // Listen for auth changes
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -44,6 +46,11 @@ export default function RootLayout() {
           <Stack.Screen name="workout-summary" options={{ presentation: 'fullScreenModal' }} />
           <Stack.Screen name="nutrition-goals" options={{ presentation: 'modal' }} />
           <Stack.Screen name="nutrition-report" options={{ presentation: 'card' }} />
+          <Stack.Screen name="workout-stats" options={{ presentation: 'card' }} />
+          <Stack.Screen name="measurements" options={{ presentation: 'card' }} />
+          <Stack.Screen name="ai-chat" options={{ presentation: 'card' }} />
+          <Stack.Screen name="privacy-policy" options={{ presentation: 'card' }} />
+          <Stack.Screen name="export" options={{ presentation: 'modal' }} />
         </Stack>
       </QueryClientProvider>
     </GestureHandlerRootView>
