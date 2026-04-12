@@ -22,6 +22,12 @@ interface AuthState {
   setProfile: (profile: Profile | null) => void;
   signOut: () => Promise<void>;
   fetchProfile: () => Promise<void>;
+  updateProfile: (fields: Partial<{
+    username: string;
+    bodyweightKg: number;
+    goal: string;
+    trainingDaysPerWeek: number;
+  }>) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -63,5 +69,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signOut: async () => {
     await supabase.auth.signOut();
     set({ session: null, user: null, profile: null });
+  },
+
+  updateProfile: async (fields) => {
+    const { user } = get();
+    if (!user) return;
+    const dbFields: Record<string, unknown> = {};
+    if (fields.username !== undefined) dbFields.username = fields.username;
+    if (fields.bodyweightKg !== undefined) dbFields.bodyweight_kg = fields.bodyweightKg;
+    if (fields.goal !== undefined) dbFields.goal = fields.goal;
+    if (fields.trainingDaysPerWeek !== undefined) dbFields.training_days_per_week = fields.trainingDaysPerWeek;
+    await supabase.from('profiles').update(dbFields).eq('id', user.id);
+    await get().fetchProfile();
   },
 }));

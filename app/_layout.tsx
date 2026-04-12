@@ -51,6 +51,7 @@ export default function RootLayout() {
           <Stack.Screen name="ai-chat" options={{ presentation: 'card' }} />
           <Stack.Screen name="privacy-policy" options={{ presentation: 'card' }} />
           <Stack.Screen name="export" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="profile-settings" options={{ presentation: 'card', headerShown: false }} />
         </Stack>
       </QueryClientProvider>
     </GestureHandlerRootView>

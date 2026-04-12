@@ -14,7 +14,7 @@ import { LevelUpModal } from '@/components/gamification/LevelUpModal';
 import { BadgeToast } from '@/components/gamification/BadgeToast';
 import { BadgeShelf } from '@/components/gamification/BadgeShelf';
 import { XpBar } from '@/components/gamification/XpBar';
-import { Check, X, Ruler, Upload, Flame, Dumbbell, Frown, Target } from 'lucide-react-native';
+import { Check, X, Ruler, Upload, Flame, Dumbbell, Frown, Target, Settings } from 'lucide-react-native';
 import { HabitIcon } from '@/components/ui/HabitIcon';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/lib/constants';
 import { formatDate } from '@/lib/utils';
@@ -98,6 +98,16 @@ export default function ProfileScreen() {
             <Text style={styles.signOutText}>Sign Out</Text>
           </TouchableOpacity>
         </View>
+
+        <TouchableOpacity onPress={() => router.push('/profile-settings')} style={styles.settingsLink}>
+          <Card style={styles.settingsCard}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
+              <Settings size={18} color={Colors.textPrimary} />
+              <Text style={styles.settingsText}>Edit Profile & Settings</Text>
+            </View>
+            <Text variant="caption">Goal, weight, fitness level, diet →</Text>
+          </Card>
+        </TouchableOpacity>
 
         {/* Today's discipline */}
         {habits.length > 0 && (
@@ -270,4 +280,7 @@ const styles = StyleSheet.create({
   exportText: { fontSize: FontSize.base, fontWeight: FontWeight.bold, color: Colors.textPrimary },
   privacyLink: { alignItems: 'center', paddingVertical: Spacing.md },
   privacyLinkText: { fontSize: FontSize.xs, color: Colors.textMuted },
+  settingsLink: {},
+  settingsCard: { gap: 4 },
+  settingsText: { fontSize: FontSize.base, fontWeight: FontWeight.bold, color: Colors.textPrimary },
 });
