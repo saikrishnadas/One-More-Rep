@@ -158,3 +158,12 @@ export const cheatDayLogs = sqliteTable('cheat_day_logs', {
   plannedVsActual: text('planned_vs_actual').default('planned'),
   guilt: integer('guilt').default(0),
 });
+
+export const progressPhotos = sqliteTable('progress_photos', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  date: text('date').notNull(),
+  localUri: text('local_uri').notNull(),
+  notes: text('notes'),
+  weight: real('weight'),
+});

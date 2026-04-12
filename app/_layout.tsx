@@ -55,6 +55,7 @@ export default function RootLayout() {
           <Stack.Screen name="progress-report" options={{ presentation: 'card', headerShown: false }} />
           <Stack.Screen name="cheat-day" options={{ presentation: 'card', headerShown: false }} />
           <Stack.Screen name="goal-estimate" options={{ presentation: 'card', headerShown: false }} />
+          <Stack.Screen name="progress-photos" options={{ presentation: 'card', headerShown: false }} />
         </Stack>
       </QueryClientProvider>
     </GestureHandlerRootView>

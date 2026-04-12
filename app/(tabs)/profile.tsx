@@ -14,7 +14,7 @@ import { LevelUpModal } from '@/components/gamification/LevelUpModal';
 import { BadgeToast } from '@/components/gamification/BadgeToast';
 import { BadgeShelf } from '@/components/gamification/BadgeShelf';
 import { XpBar } from '@/components/gamification/XpBar';
-import { Check, X, Ruler, Upload, Flame, Dumbbell, Frown, Target, Settings, TrendingUp } from 'lucide-react-native';
+import { Check, X, Ruler, Upload, Flame, Dumbbell, Frown, Target, Settings, TrendingUp, Camera } from 'lucide-react-native';
 import { HabitIcon } from '@/components/ui/HabitIcon';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/lib/constants';
 import { formatDate } from '@/lib/utils';
@@ -227,6 +227,17 @@ export default function ProfileScreen() {
               <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.bold, color: Colors.textPrimary }}>Goal Date Estimate</Text>
             </View>
             <Text variant="caption">When will you reach your goal? →</Text>
+          </Card>
+        </TouchableOpacity>
+
+        {/* Progress Photos link */}
+        <TouchableOpacity onPress={() => router.push('/progress-photos')}>
+          <Card style={{ gap: 4 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
+              <Camera size={18} color={Colors.textPrimary} />
+              <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.bold, color: Colors.textPrimary }}>Progress Photos</Text>
+            </View>
+            <Text variant="caption">Visual transformation timeline →</Text>
           </Card>
         </TouchableOpacity>
 

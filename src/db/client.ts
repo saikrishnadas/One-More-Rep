@@ -169,4 +169,15 @@ export async function initDatabase() {
       guilt integer DEFAULT 0
     )`);
   } catch {}
+
+  try {
+    await sqliteDb.execAsync(`CREATE TABLE IF NOT EXISTS progress_photos (
+      id text PRIMARY KEY,
+      user_id text NOT NULL,
+      date text NOT NULL,
+      local_uri text NOT NULL,
+      notes text,
+      weight real
+    )`);
+  } catch {}
 }
