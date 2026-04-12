@@ -52,6 +52,7 @@ export default function RootLayout() {
           <Stack.Screen name="privacy-policy" options={{ presentation: 'card' }} />
           <Stack.Screen name="export" options={{ presentation: 'modal' }} />
           <Stack.Screen name="profile-settings" options={{ presentation: 'card', headerShown: false }} />
+          <Stack.Screen name="progress-report" options={{ presentation: 'card', headerShown: false }} />
         </Stack>
       </QueryClientProvider>
     </GestureHandlerRootView>
