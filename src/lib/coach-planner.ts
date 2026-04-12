@@ -54,10 +54,14 @@ export async function generateWorkoutPlan(
   recoveryMap: Record<string, { status: string }>
 ): Promise<WorkoutPlan> {
   const allExercises = await db.select().from(exercises);
-  const relevant = allExercises.filter(e =>
-    e.primaryMuscle === muscleGroup ||
-    (JSON.parse(e.subMuscles || '[]') as string[]).includes(muscleGroup)
-  );
+  const relevant = allExercises.filter(e => {
+    if (e.primaryMuscle === muscleGroup) return true;
+    try {
+      return (JSON.parse(e.subMuscles || '[]') as string[]).includes(muscleGroup);
+    } catch {
+      return false;
+    }
+  });
 
   const prMap: Record<string, number | null> = {};
   await Promise.all(relevant.map(async (e) => {

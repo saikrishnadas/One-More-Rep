@@ -145,8 +145,11 @@ export async function scheduleHabitReminderInteractive(
   habitName: string,
   timeHHMM: string  // e.g. '07:30'
 ) {
+  // Cancel any existing notification for this habit before re-scheduling
+  await Notifications.cancelScheduledNotificationAsync(`habit-checkin-${habitId}`).catch(() => {});
   const [hour, minute] = timeHHMM.split(':').map(Number);
   await Notifications.scheduleNotificationAsync({
+    identifier: `habit-checkin-${habitId}`,
     content: {
       title: `Habit Check-in`,
       body: `Did you complete "${habitName}" today?`,

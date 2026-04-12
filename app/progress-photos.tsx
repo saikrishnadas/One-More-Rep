@@ -26,26 +26,31 @@ export default function ProgressPhotosScreen() {
   useEffect(() => { if (user) load(user.id); }, [user]);
 
   async function handleAddPhoto() {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      const cam = await ImagePicker.requestCameraPermissionsAsync();
-      if (!cam.granted) { Alert.alert('Permission needed', 'Please allow camera or photo library access.'); return; }
+    const libraryPerm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const camPerm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!libraryPerm.granted && !camPerm.granted) {
+      Alert.alert('Permission needed', 'Please allow camera or photo library access.');
+      return;
     }
-    Alert.alert('Add Progress Photo', 'Choose source:', [
-      {
+    const options: { text: string; onPress?: () => void; style?: 'cancel' | 'destructive' | 'default' }[] = [];
+    if (camPerm.granted) {
+      options.push({
         text: 'Camera', onPress: async () => {
           const result = await ImagePicker.launchCameraAsync({ quality: 0.8, allowsEditing: true, aspect: [3, 4] });
           if (!result.canceled && user) await addPhoto(user.id, result.assets[0].uri);
         },
-      },
-      {
+      });
+    }
+    if (libraryPerm.granted) {
+      options.push({
         text: 'Photo Library', onPress: async () => {
           const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, allowsEditing: true, aspect: [3, 4] });
           if (!result.canceled && user) await addPhoto(user.id, result.assets[0].uri);
         },
-      },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+      });
+    }
+    options.push({ text: 'Cancel', style: 'cancel' });
+    Alert.alert('Add Progress Photo', 'Choose source:', options);
   }
 
   function handlePhotoPress(id: string) {

@@ -42,6 +42,7 @@ export default function ProgressReportScreen() {
     if (!user) return;
     generateReport(user.id)
       .then(setReport)
+      .catch(() => setReport(null))
       .finally(() => setLoading(false));
   }, [user]);
 
