@@ -134,6 +134,13 @@ export default function NutritionScreen() {
             <Text style={styles.reportLinkText}>View Weekly Report →</Text>
           </View>
         </TouchableOpacity>
+
+        {/* Cheat day log link */}
+        <TouchableOpacity onPress={() => router.push('/cheat-day')} style={{ marginTop: Spacing.sm }}>
+          <Text style={{ textAlign: 'center', color: Colors.warning, fontSize: FontSize.sm }}>
+            🍕 Cheat Day Log →
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
 
       <AutoGoalsModal

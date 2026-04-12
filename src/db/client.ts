@@ -158,4 +158,15 @@ export async function initDatabase() {
   } catch {
     // Column already exists - ignore
   }
+
+  try {
+    await sqliteDb.execAsync(`CREATE TABLE IF NOT EXISTS cheat_day_logs (
+      id text PRIMARY KEY,
+      user_id text NOT NULL,
+      date text NOT NULL,
+      notes text,
+      planned_vs_actual text DEFAULT 'planned',
+      guilt integer DEFAULT 0
+    )`);
+  } catch {}
 }

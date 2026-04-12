@@ -149,3 +149,12 @@ export const mealTemplates = sqliteTable('meal_templates', {
   mealType: text('meal_type'),
   usageCount: integer('usage_count').default(0),
 });
+
+export const cheatDayLogs = sqliteTable('cheat_day_logs', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  date: text('date').notNull(),
+  notes: text('notes'),
+  plannedVsActual: text('planned_vs_actual').default('planned'),
+  guilt: integer('guilt').default(0),
+});
