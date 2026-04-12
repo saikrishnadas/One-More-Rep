@@ -47,17 +47,17 @@ async function getUserPR(userId: string, exerciseName: string): Promise<number |
 
 export async function generateWorkoutPlan(
   userId: string,
-  muscleGroup: string,
-  focusSection: string,
+  muscleGroups: string[],
+  focusSections: string[],
   fitnessLevel: string,
   goal: string | null,
   recoveryMap: Record<string, { status: string }>
 ): Promise<WorkoutPlan> {
   const allExercises = await db.select().from(exercises);
   const relevant = allExercises.filter(e => {
-    if (e.primaryMuscle === muscleGroup) return true;
+    if (muscleGroups.includes(e.primaryMuscle)) return true;
     try {
-      return (JSON.parse(e.subMuscles || '[]') as string[]).includes(muscleGroup);
+      return (JSON.parse(e.subMuscles || '[]') as string[]).some(m => muscleGroups.includes(m));
     } catch {
       return false;
     }
@@ -69,19 +69,20 @@ export async function generateWorkoutPlan(
   }));
 
   const exerciseList = relevant.map(e => `${e.name} (PR: ${prMap[e.id] ? prMap[e.id] + 'kg' : 'none'})`).join('\n');
-  const recoveryNote = recoveryMap[muscleGroup]
-    ? `Muscle recovery: ${recoveryMap[muscleGroup].status}`
-    : '';
+  const recoveryNotes = muscleGroups
+    .filter(m => recoveryMap[m])
+    .map(m => `${m}: ${recoveryMap[m].status}`)
+    .join(', ');
+  const focusLabel = focusSections.length ? ` focusing on ${focusSections.join(', ')}` : '';
 
-  const prompt = `You are an expert personal trainer. Design a ${muscleGroup} workout focusing on ${focusSection}.
-User: ${fitnessLevel} level, goal: ${goal ?? 'general fitness'}. ${recoveryNote}
+  const prompt = `You are an expert personal trainer. Design a ${muscleGroups.join(' + ')} workout${focusLabel}.
+User: ${fitnessLevel} level, goal: ${goal ?? 'general fitness'}. ${recoveryNotes ? `Recovery: ${recoveryNotes}` : ''}
 Available exercises:
 ${exerciseList || 'Standard gym equipment available'}
 
 Return ONLY valid JSON (no markdown):
 {
   "title": "Workout name",
-  "focusSection": "${focusSection}",
   "coachNote": "1-2 sentence coaching tip",
   "exercises": [
     {
@@ -93,12 +94,12 @@ Return ONLY valid JSON (no markdown):
     }
   ]
 }
-Include 4-5 exercises. suggestedWeightKg should be ~85% of PR if known, else a reasonable starting weight for ${fitnessLevel} level.`;
+Include 4-6 exercises. suggestedWeightKg should be ~85% of PR if known, else a reasonable starting weight for ${fitnessLevel} level.`;
 
   const { data } = await supabase.functions.invoke('ai-trainer-chat', {
     body: {
       messages: [{ role: 'user', content: prompt }],
-      context: { username: 'Athlete', goal, level: 1, weeklyWorkouts: 0, totalVolumeKg: 0, recentMuscles: [] },
+      context: { username: 'Athlete', goal, level: 1, weeklyWorkouts: 0, totalVolumeKg: 0, recentMuscles: muscleGroups },
     },
   });
 
@@ -106,25 +107,28 @@ Include 4-5 exercises. suggestedWeightKg should be ~85% of PR if known, else a r
   try {
     parsed = JSON.parse(data?.reply ?? '{}');
   } catch {
-    parsed = { title: `${muscleGroup} Workout`, focusSection, exercises: [], coachNote: "Let's crush it!" };
+    parsed = { title: `${muscleGroups.join(' + ')} Workout`, exercises: [], coachNote: "Let's crush it!" };
   }
 
-  const plannedExercises: PlannedExercise[] = (parsed.exercises ?? []).map((pe: any) => {
-    const match = relevant.find(e => e.name.toLowerCase() === pe.name?.toLowerCase()) ?? relevant[0];
+  // Map AI exercises to DB entries — use a unique slot ID to avoid dedup collisions in the workout store
+  const plannedExercises: PlannedExercise[] = (parsed.exercises ?? []).map((pe: any, i: number) => {
+    const dbMatch = relevant.find(e => e.name.toLowerCase() === pe.name?.toLowerCase());
+    // Use DB id if matched, otherwise generate a unique coach slot id
+    const exerciseId = dbMatch ? dbMatch.id : `coach-${Date.now()}-${i}`;
     return {
-      exerciseId: match?.id ?? '',
-      name: pe.name ?? match?.name ?? '',
-      primaryMuscle: match?.primaryMuscle ?? muscleGroup,
+      exerciseId,
+      name: pe.name ?? dbMatch?.name ?? 'Exercise',
+      primaryMuscle: dbMatch?.primaryMuscle ?? muscleGroups[0],
       sets: pe.sets ?? 3,
       reps: pe.reps ?? '8-10',
       suggestedWeightKg: pe.suggestedWeightKg ?? 0,
       notes: pe.notes ?? '',
     };
-  }).filter((e: PlannedExercise) => e.exerciseId);
+  });
 
   return {
-    title: parsed.title ?? `${muscleGroup} Workout`,
-    focusSection,
+    title: parsed.title ?? `${muscleGroups.join(' + ')} Workout`,
+    focusSection: focusSections.join(', '),
     exercises: plannedExercises,
     coachNote: parsed.coachNote ?? "Let's crush it!",
   };

@@ -35,8 +35,8 @@ function PlanTab() {
   const { startWorkout, addExercise } = useWorkoutStore();
 
   const [recoveryMap, setRecoveryMap] = useState<Record<string, { status: string; recoveryPct: number }>>({});
-  const [selectedMuscle, setSelectedMuscle] = useState<MuscleGroupKey | null>(null);
-  const [selectedSection, setSelectedSection] = useState<string | null>(null);
+  const [selectedMuscles, setSelectedMuscles] = useState<Set<MuscleGroupKey>>(new Set());
+  const [selectedSections, setSelectedSections] = useState<Set<string>>(new Set());
   const [plan, setPlan] = useState<WorkoutPlan | null>(null);
   const [loading, setLoading] = useState(false);
   const [addedToWorkout, setAddedToWorkout] = useState(false);
@@ -45,15 +45,36 @@ function PlanTab() {
     if (user) getMuscleRecovery(user.id, profile?.goal).then(setRecoveryMap as any).catch(() => {});
   }, [user]);
 
+  function toggleMuscle(key: MuscleGroupKey) {
+    setSelectedMuscles(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+    setSelectedSections(new Set());
+    setPlan(null);
+    setAddedToWorkout(false);
+  }
+
+  function toggleSection(sec: string) {
+    setSelectedSections(prev => {
+      const next = new Set(prev);
+      if (next.has(sec)) next.delete(sec); else next.add(sec);
+      return next;
+    });
+    setPlan(null);
+    setAddedToWorkout(false);
+  }
+
   async function handleGeneratePlan() {
-    if (!selectedMuscle || !selectedSection || !user) return;
+    if (selectedMuscles.size === 0 || !user) return;
     setLoading(true);
     setPlan(null);
     try {
       const result = await generateWorkoutPlan(
         user.id,
-        selectedMuscle,
-        selectedSection,
+        Array.from(selectedMuscles),
+        Array.from(selectedSections),
         onboarding?.fitnessLevel ?? 'intermediate',
         profile?.goal ?? null,
         recoveryMap
@@ -69,32 +90,40 @@ function PlanTab() {
   function handleAddToWorkout() {
     if (!plan || !user) return;
     startWorkout();
-    for (const ex of plan.exercises) {
+    // Each exercise already has a unique exerciseId from coach-planner (DB id or generated slot id)
+    plan.exercises.forEach(ex => {
       addExercise({
         id: ex.exerciseId,
         name: ex.name,
         primaryMuscle: ex.primaryMuscle,
       });
-    }
+    });
     setAddedToWorkout(true);
     setTimeout(() => router.push('/active-workout'), 300);
   }
 
-  const muscleGroup = MUSCLE_GROUPS.find(g => g.key === selectedMuscle);
+  // Collect all unique sections from selected muscle groups
+  const availableSections = Array.from(
+    new Set(
+      MUSCLE_GROUPS
+        .filter(g => selectedMuscles.has(g.key))
+        .flatMap(g => g.sections as unknown as string[])
+    )
+  );
 
   return (
     <ScrollView contentContainerStyle={styles.planContent}>
-      <Text variant="label" style={styles.stepLabel}>1. Which muscle group today?</Text>
+      <Text variant="label" style={styles.stepLabel}>1. Which muscle groups? (pick one or more)</Text>
       <View style={styles.muscleGrid}>
         {MUSCLE_GROUPS.map(group => {
           const recovery = recoveryMap[group.key];
           const statusColor = recovery ? RECOVERY_COLOR[recovery.status] ?? Colors.textMuted : Colors.textMuted;
-          const isSelected = selectedMuscle === group.key;
+          const isSelected = selectedMuscles.has(group.key);
           return (
             <TouchableOpacity
               key={group.key}
               style={[styles.muscleChip, isSelected && styles.muscleChipSelected, { borderColor: isSelected ? Colors.primary : statusColor }]}
-              onPress={() => { setSelectedMuscle(group.key); setSelectedSection(null); setPlan(null); setAddedToWorkout(false); }}
+              onPress={() => toggleMuscle(group.key)}
             >
               <Text style={[styles.muscleChipText, isSelected && { color: Colors.primary }]}>{group.label}</Text>
               {recovery && (
@@ -105,36 +134,40 @@ function PlanTab() {
         })}
       </View>
 
-      {selectedMuscle && recoveryMap[selectedMuscle] && (
-        <Card style={styles.recoveryNote}>
-          <Text variant="caption" color={RECOVERY_COLOR[recoveryMap[selectedMuscle].status]}>
-            {recoveryMap[selectedMuscle].status === 'fatigued'
-              ? `${selectedMuscle} is fatigued — consider a lighter session or rest`
-              : recoveryMap[selectedMuscle].status === 'recovering'
-              ? `${selectedMuscle} is still recovering — moderate intensity recommended`
-              : `${selectedMuscle} is fresh and ready to train hard!`}
-          </Text>
-        </Card>
-      )}
+      {Array.from(selectedMuscles).map(muscle => {
+        const rec = recoveryMap[muscle];
+        if (!rec) return null;
+        return (
+          <Card key={muscle} style={styles.recoveryNote}>
+            <Text variant="caption" color={RECOVERY_COLOR[rec.status]}>
+              {rec.status === 'fatigued'
+                ? `${muscle} is fatigued — consider lighter intensity`
+                : rec.status === 'recovering'
+                ? `${muscle} is still recovering — moderate intensity recommended`
+                : `${muscle} is fresh and ready!`}
+            </Text>
+          </Card>
+        );
+      })}
 
-      {muscleGroup && (
+      {availableSections.length > 0 && (
         <>
-          <Text variant="label" style={styles.stepLabel}>2. Focus area?</Text>
+          <Text variant="label" style={styles.stepLabel}>2. Focus areas? (optional, pick any)</Text>
           <View style={styles.sectionRow}>
-            {muscleGroup.sections.map(sec => (
+            {availableSections.map(sec => (
               <TouchableOpacity
                 key={sec}
-                style={[styles.sectionChip, selectedSection === sec && styles.sectionChipSelected]}
-                onPress={() => { setSelectedSection(sec); setPlan(null); setAddedToWorkout(false); }}
+                style={[styles.sectionChip, selectedSections.has(sec) && styles.sectionChipSelected]}
+                onPress={() => toggleSection(sec)}
               >
-                <Text style={[styles.sectionChipText, selectedSection === sec && { color: Colors.primary }]}>{sec}</Text>
+                <Text style={[styles.sectionChipText, selectedSections.has(sec) && { color: Colors.primary }]}>{sec}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </>
       )}
 
-      {selectedMuscle && selectedSection && !plan && !loading && (
+      {selectedMuscles.size > 0 && !plan && !loading && (
         <Button label="Generate My Workout" onPress={handleGeneratePlan} />
       )}
 
@@ -175,7 +208,7 @@ function PlanTab() {
             <Button label="Start This Workout" onPress={handleAddToWorkout} />
           )}
 
-          <TouchableOpacity onPress={() => { setSelectedSection(null); setPlan(null); }} style={styles.resetBtn}>
+          <TouchableOpacity onPress={() => { setSelectedSections(new Set()); setPlan(null); }} style={styles.resetBtn}>
             <Text style={styles.resetText}>← Change focus</Text>
           </TouchableOpacity>
         </View>
@@ -272,7 +305,7 @@ export default function CoachScreen() {
         <View style={styles.headerTitle}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Zap size={16} color={Colors.primary} />
-            <Text variant="title">Coach AI</Text>
+            <Text variant="title">Coach</Text>
           </View>
           <Text variant="caption">Personal Trainer Mode</Text>
         </View>
