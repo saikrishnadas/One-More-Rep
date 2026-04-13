@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useFocusEffect } from "expo-router";
 import {
   View,
   ScrollView,
@@ -27,7 +28,9 @@ import { useNutritionStore } from "@/stores/nutrition";
 import { useOnboardingStore } from "@/stores/onboarding";
 import { MuscleStatusCard } from "@/components/home/MuscleStatusCard";
 import { WaterCard } from "@/components/home/WaterCard";
+import { ReadinessCard } from "@/components/home/ReadinessCard";
 import { useWaterStore } from "@/stores/water";
+import { useHealthPlatformStore } from "@/stores/healthPlatform";
 import { Flame, Footprints, Zap } from "lucide-react-native";
 
 export default function HomeScreen() {
@@ -43,6 +46,16 @@ export default function HomeScreen() {
   const [aiLoading, setAiLoading] = useState(false);
   const { goals: nutritionGoals } = useNutritionStore();
   const { data: onboardingData, load: loadOnboarding } = useOnboardingStore();
+  const { connected, fetchReadiness } = useHealthPlatformStore();
+  const userAge = profile?.age ?? 30;
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (connected) {
+        fetchReadiness(userAge);
+      }
+    }, [connected, userAge])
+  );
 
   useEffect(() => {
     if (!user) return;
@@ -221,6 +234,8 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
         <MuscleStatusCard userId={user?.id ?? ""} goal={profile?.goal} />
+
+        <ReadinessCard />
 
         <Button
           label="START WORKOUT"
