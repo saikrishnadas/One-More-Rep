@@ -31,7 +31,7 @@ export default function ActiveWorkoutScreen() {
   const { user, profile } = useAuthStore();
   const { startHeartRateMonitoring, stopHeartRateMonitoring } = useHealthPlatformStore();
   const liveHeartRate = useHealthPlatformStore((s) => s.liveHeartRate);
-  const userAge = profile?.age ?? 30;
+  const userAge = (profile as any)?.age ?? 30;
   const restTimerActive = useRestTimerStore((s) => s.active);
   const [showSearch, setShowSearch] = useState(false);
   const [muscleRecovery, setMuscleRecovery] = useState<Record<string, MuscleRecovery>>({});

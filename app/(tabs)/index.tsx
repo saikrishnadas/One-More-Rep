@@ -47,7 +47,7 @@ export default function HomeScreen() {
   const { goals: nutritionGoals } = useNutritionStore();
   const { data: onboardingData, load: loadOnboarding } = useOnboardingStore();
   const { connected, fetchReadiness } = useHealthPlatformStore();
-  const userAge = profile?.age ?? 30;
+  const userAge = (profile as any)?.age ?? 30;
 
   useFocusEffect(
     React.useCallback(() => {
