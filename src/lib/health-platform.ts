@@ -839,43 +839,46 @@ export function getHRZone(bpm: number, age: number): HRZone {
  * Get display info for an HR zone (label, color, percentage range).
  */
 export function getHRZoneInfo(zone: HRZone): HRZoneInfo {
-  const zoneMap: Record<HRZone, HRZoneInfo> = {
-    z1: {
-      zone: 'z1',
-      label: 'Recovery',
-      color: '#6b7280',
-      minPct: 0,
-      maxPct: 50,
-    },
-    z2: {
-      zone: 'z2',
-      label: 'Fat Burn',
-      color: '#3b82f6',
-      minPct: 50,
-      maxPct: 60,
-    },
-    z3: {
-      zone: 'z3',
-      label: 'Cardio',
-      color: '#22c55e',
-      minPct: 60,
-      maxPct: 70,
-    },
-    z4: {
-      zone: 'z4',
-      label: 'Hard',
-      color: '#f97316',
-      minPct: 70,
-      maxPct: 85,
-    },
-    z5: {
-      zone: 'z5',
-      label: 'Peak',
-      color: '#ef4444',
-      minPct: 85,
-      maxPct: 100,
-    },
-  };
-
-  return zoneMap[zone] ?? zoneMap['z1'];
+  try {
+    const zoneMap: Record<HRZone, HRZoneInfo> = {
+      z1: {
+        zone: 'z1',
+        label: 'Recovery',
+        color: '#6b7280',
+        minPct: 0,
+        maxPct: 50,
+      },
+      z2: {
+        zone: 'z2',
+        label: 'Fat Burn',
+        color: '#3b82f6',
+        minPct: 50,
+        maxPct: 60,
+      },
+      z3: {
+        zone: 'z3',
+        label: 'Cardio',
+        color: '#22c55e',
+        minPct: 60,
+        maxPct: 70,
+      },
+      z4: {
+        zone: 'z4',
+        label: 'Hard',
+        color: '#f97316',
+        minPct: 70,
+        maxPct: 85,
+      },
+      z5: {
+        zone: 'z5',
+        label: 'Peak',
+        color: '#ef4444',
+        minPct: 85,
+        maxPct: 100,
+      },
+    };
+    return zoneMap[zone] ?? zoneMap['z1'];
+  } catch {
+    return { zone: 'z1', label: 'Recovery', color: '#6b7280', minPct: 0, maxPct: 50 };
+  }
 }
