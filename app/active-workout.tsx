@@ -18,6 +18,8 @@ import { formatDuration, calculateWorkoutXp } from '@/lib/utils';
 import * as Haptics from 'expo-haptics';
 import { X, Dumbbell } from 'lucide-react-native';
 import { getMuscleRecovery, MuscleRecovery } from '@/lib/muscle-recovery';
+import HeartRateCard from '../src/components/workout/HeartRateCard';
+import { useHealthPlatformStore } from '../src/stores/healthPlatform';
 
 export default function ActiveWorkoutScreen() {
   const {
@@ -27,6 +29,8 @@ export default function ActiveWorkoutScreen() {
     finishWorkout, discardWorkout, tick,
   } = useWorkoutStore();
   const { user, profile } = useAuthStore();
+  const { startHeartRateMonitoring, stopHeartRateMonitoring } = useHealthPlatformStore();
+  const userAge = profile?.age ?? 30;
   const restTimerActive = useRestTimerStore((s) => s.active);
   const [showSearch, setShowSearch] = useState(false);
   const [muscleRecovery, setMuscleRecovery] = useState<Record<string, MuscleRecovery>>({});
@@ -50,6 +54,12 @@ export default function ActiveWorkoutScreen() {
   useEffect(() => {
     timerRef.current = setInterval(() => tick(), 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, []);
+
+  // Heart rate monitoring lifecycle
+  useEffect(() => {
+    startHeartRateMonitoring(userAge);
+    return () => stopHeartRateMonitoring();
   }, []);
 
   const totalVolume = exercises
@@ -137,6 +147,8 @@ export default function ActiveWorkoutScreen() {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
+        <HeartRateCard />
+
         {exercises.length === 0 && (
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>💪</Text>
