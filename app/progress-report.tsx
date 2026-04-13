@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Svg, { Rect, Text as SvgText } from 'react-native-svg';
 import { useAuthStore } from '@/stores/auth';
 import { generateReport, PeriodReport } from '@/lib/report-generator';
+import { exportReportCSV } from '@/lib/export';
 import { Text } from '@/components/ui/Text';
 import { Card } from '@/components/ui/Card';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/lib/constants';
-import { ChevronLeft, TrendingUp, Dumbbell, Flame, Target, Utensils } from 'lucide-react-native';
+import { ChevronLeft, TrendingUp, Dumbbell, Flame, Target, Utensils, Share2 } from 'lucide-react-native';
 
 function MiniBarChart({ data }: { data: { label: string; volume: number }[] }) {
   const max = Math.max(...data.map(d => d.volume), 1);
@@ -23,7 +24,7 @@ function MiniBarChart({ data }: { data: { label: string; volume: number }[] }) {
         const x = i * (barW + 4);
         const y = H - barH;
         return (
-          <React.Fragment key={d.label}>
+          <React.Fragment key={i}>
             <Rect x={x} y={y} width={barW} height={barH} rx={3} fill={d.volume > 0 ? Colors.primary : Colors.bgCardBorder} />
             <SvgText x={x + barW / 2} y={H + 12} fontSize={8} fill={Colors.textMuted} textAnchor="middle">{d.label}</SvgText>
           </React.Fragment>
@@ -37,6 +38,7 @@ export default function ProgressReportScreen() {
   const { user } = useAuthStore();
   const [report, setReport] = useState<PeriodReport | null>(null);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -46,6 +48,18 @@ export default function ProgressReportScreen() {
       .finally(() => setLoading(false));
   }, [user]);
 
+  async function handleExport() {
+    if (!report) return;
+    setExporting(true);
+    try {
+      await exportReportCSV(report);
+    } catch {
+      Alert.alert('Export failed', 'Could not export the report. Try again.');
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -53,7 +67,13 @@ export default function ProgressReportScreen() {
           <ChevronLeft size={24} color={Colors.primary} />
         </TouchableOpacity>
         <Text variant="heading" style={{ flex: 1, textAlign: 'center' }}>10-Day Report</Text>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity
+          onPress={handleExport}
+          disabled={!report || exporting}
+          style={[styles.exportBtn, (!report || exporting) && { opacity: 0.4 }]}
+        >
+          <Share2 size={18} color={Colors.primary} />
+        </TouchableOpacity>
       </View>
 
       {loading ? (
@@ -154,6 +174,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md },
   backBtn: { width: 40 },
+  exportBtn: { width: 40, alignItems: 'flex-end' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl },
   content: { padding: Spacing.xl, gap: Spacing.lg },
   period: { textAlign: 'center', marginBottom: Spacing.xs },

@@ -22,7 +22,7 @@ import { getMuscleRecovery, MuscleRecovery } from '@/lib/muscle-recovery';
 export default function ActiveWorkoutScreen() {
   const {
     isActive, startWorkout, exercises, elapsedSeconds,
-    addExercise, removeExercise, addSet,
+    addExercise, removeExercise, addSet, removeSet,
     updateSet, completeSet, uncompleteSet, updateSetRpe,
     finishWorkout, discardWorkout, tick,
   } = useWorkoutStore();
@@ -151,6 +151,7 @@ export default function ActiveWorkoutScreen() {
             exercise={exercise}
             onAddSet={() => { addSet(exercise.exerciseId); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
             onRemove={() => removeExercise(exercise.exerciseId)}
+            onRemoveSet={(setId) => removeSet(exercise.exerciseId, setId)}
             onWeightChange={(setId, v) => updateSet(exercise.exerciseId, setId, 'weightKg', v)}
             onRepsChange={(setId, v) => updateSet(exercise.exerciseId, setId, 'reps', v)}
             onCompleteSet={(setId) => { completeSet(exercise.exerciseId, setId); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }}

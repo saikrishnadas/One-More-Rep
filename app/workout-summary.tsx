@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, ScrollView, StyleSheet, TextInput, Alert, TouchableOpacity } from 'react-native';
+import { View, ScrollView, StyleSheet, TextInput, Alert, TouchableOpacity, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import ViewShot from 'react-native-view-shot';
@@ -11,11 +11,82 @@ import { ShareCard } from '@/components/workout/ShareCard';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/lib/constants';
 import { formatDuration, formatVolume } from '@/lib/utils';
 import { syncWorkoutSession } from '@/lib/workout-sync';
-import { estimateWorkoutCalories } from '@/lib/calorie-burn';
+import { estimateWorkoutCalories, estimateSweatLossMl } from '@/lib/calorie-burn';
 import { useTemplatesStore } from '@/stores/templates';
 import { useWorkoutStore } from '@/stores/workout';
 import { useAuthStore } from '@/stores/auth';
 import { useNutritionStore } from '@/stores/nutrition';
+
+const RPE_LABELS: Record<number, string> = {
+  1: 'Very Easy', 2: 'Easy', 3: 'Light', 4: 'Moderate',
+  5: 'Challenging', 6: 'Hard', 7: 'Very Hard', 8: 'Extremely Hard',
+  9: 'Near Max', 10: 'Max Effort',
+};
+
+function RpeModal({ sessionId, onDone }: { sessionId: string; onDone: () => void }) {
+  const { saveSessionRpe } = useWorkoutStore();
+  const [selected, setSelected] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    if (!selected) { onDone(); return; }
+    setSaving(true);
+    await saveSessionRpe(sessionId, selected).catch(() => {});
+    setSaving(false);
+    onDone();
+  }
+
+  return (
+    <Modal transparent animationType="fade">
+      <View style={rpeStyles.overlay}>
+        <View style={rpeStyles.sheet}>
+          <Text variant="heading" style={{ textAlign: 'center', marginBottom: 4 }}>How hard was that?</Text>
+          <Text variant="caption" style={{ textAlign: 'center', marginBottom: Spacing.xs }}>
+            Rate your overall effort from 1 (barely broke a sweat) to 10 (gave absolutely everything).
+          </Text>
+          <Text variant="caption" style={{ textAlign: 'center', color: Colors.primary, marginBottom: Spacing.lg }}>
+            💡 Coach uses this to adjust your next workout — too easy → heavier weights, too hard → lighter load & more rest.
+          </Text>
+          <View style={rpeStyles.bubbleRow}>
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+              <TouchableOpacity
+                key={n}
+                style={[rpeStyles.bubble, selected === n && rpeStyles.bubbleSelected,
+                  n >= 8 && { borderColor: Colors.secondary },
+                  n >= 8 && selected === n && { backgroundColor: Colors.secondary },
+                ]}
+                onPress={() => setSelected(n)}
+              >
+                <Text style={[rpeStyles.bubbleText, selected === n && { color: '#fff' }]}>{n}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          {selected && (
+            <Text variant="caption" style={{ textAlign: 'center', color: selected >= 8 ? Colors.secondary : Colors.primary, marginTop: Spacing.sm }}>
+              {RPE_LABELS[selected]}
+              {selected >= 8 ? ' — Coach will ease up next time 💪' : selected <= 4 ? ' — Coach will push you harder next time 🔥' : ' — Great effort, keep it up!'}
+            </Text>
+          )}
+          <Button
+            label={saving ? 'Saving…' : selected ? 'Save & Continue' : 'Skip'}
+            onPress={handleSave}
+            loading={saving}
+            style={{ marginTop: Spacing.lg }}
+          />
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const rpeStyles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: Colors.bgCard, borderTopLeftRadius: Radius.xl, borderTopRightRadius: Radius.xl, padding: Spacing.xl, paddingBottom: 40, gap: Spacing.sm },
+  bubbleRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: Spacing.sm },
+  bubble: { width: 44, height: 44, borderRadius: 22, borderWidth: 1.5, borderColor: Colors.bgCardBorder, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bg },
+  bubbleSelected: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  bubbleText: { fontSize: FontSize.base, fontWeight: FontWeight.heavy, color: Colors.textPrimary },
+});
 
 const MUSCLE_COLORS: Record<string, string> = {
   chest: '#ef4444', back: '#3b82f6', shoulders: '#a855f7',
@@ -44,6 +115,7 @@ export default function WorkoutSummaryScreen() {
   const [templateName, setTemplateName] = useState(params.sessionName ?? 'My Workout');
   const [showTemplateSave, setShowTemplateSave] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [showRpe, setShowRpe] = useState(true);
   const shareCardRef = useRef<View>(null);
 
   async function handleShare() {
@@ -69,6 +141,7 @@ export default function WorkoutSummaryScreen() {
   const muscles = params.musclesWorked ? params.musclesWorked.split(',').filter(Boolean) : [];
   const xp = parseInt(params.xpEarned ?? '0');
   const caloriesBurned = estimateWorkoutCalories(duration, volume, profile?.bodyweightKg ?? 70);
+  const { lostMl, drinkMl } = estimateSweatLossMl(duration, volume);
 
   // Sync to Supabase in background
   useEffect(() => {
@@ -100,6 +173,9 @@ export default function WorkoutSummaryScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {showRpe && params.sessionId && (
+        <RpeModal sessionId={params.sessionId} onDone={() => setShowRpe(false)} />
+      )}
       <ScrollView contentContainerStyle={styles.content}>
         {/* Hero */}
         <Text style={styles.heroIcon}>{prs > 0 ? '🏆' : '💪'}</Text>
@@ -119,6 +195,17 @@ export default function WorkoutSummaryScreen() {
             <Text variant="label" color={Colors.warning}>🔥 ESTIMATED BURN</Text>
             <Text style={styles.burnValue}>~{caloriesBurned} kcal</Text>
             <Text variant="caption">Based on {formatDuration(duration)} workout, {formatVolume(volume)}kg volume</Text>
+          </Card>
+        )}
+
+        {/* Sweat / hydration card */}
+        {drinkMl > 0 && (
+          <Card style={styles.burnCard}>
+            <Text variant="label" color={Colors.info}>💧 REHYDRATE NOW</Text>
+            <Text style={[styles.burnValue, { color: Colors.info }]}>~{drinkMl} ml</Text>
+            <Text variant="caption">
+              Est. ~{lostMl} ml lost via sweat — drink ~{drinkMl} ml to fully rehydrate.
+            </Text>
           </Card>
         )}
 

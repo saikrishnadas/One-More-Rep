@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Text } from '@/components/ui/Text';
-import { Check } from 'lucide-react-native';
+import { Check, Trash2 } from 'lucide-react-native';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/lib/constants';
 import type { ActiveSet } from '@/stores/workout';
 import { useRestTimerStore } from '@/stores/restTimer';
@@ -14,14 +14,15 @@ interface SetRowProps {
   onComplete: () => void;
   onUncomplete: () => void;
   onRpeChange?: (rpe: number | null) => void;
+  onRemove?: () => void;
 }
 
-export function SetRow({ set, exerciseName, onWeightChange, onRepsChange, onComplete, onUncomplete, onRpeChange }: SetRowProps) {
+export function SetRow({ set, exerciseName, onWeightChange, onRepsChange, onComplete, onUncomplete, onRpeChange, onRemove }: SetRowProps) {
   const startRestTimer = useRestTimerStore((s) => s.start);
   return (
     <View>
       <View style={[styles.row, set.completed && styles.completedRow]}>
-        <Text style={styles.setNum}>{set.setNumber}</Text>
+        <Text style={styles.setNum}>{set.setNumber < 0 ? 'W' : set.setNumber}</Text>
 
         {set.isPr && <Text style={styles.prBadge}>PR</Text>}
 
@@ -65,16 +66,42 @@ export function SetRow({ set, exerciseName, onWeightChange, onRepsChange, onComp
         >
           {set.completed && <Check size={18} color={Colors.success} />}
         </TouchableOpacity>
+
+        {onRemove && !set.completed && (
+          <TouchableOpacity
+            style={styles.deleteBtn}
+            onPress={() =>
+              Alert.alert('Delete Set', `Remove set ${set.setNumber < 0 ? 'warm-up' : set.setNumber}?`, [
+                { text: 'Delete', style: 'destructive', onPress: onRemove },
+                { text: 'Cancel', style: 'cancel' },
+              ])
+            }
+            hitSlop={8}
+          >
+            <Trash2 size={14} color={Colors.textMuted} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {set.completed && (
-        <View style={styles.rpeRow}>
-          <Text style={styles.rpeLabel}>RPE</Text>
+        <View style={styles.rpeSection}>
+          <View style={styles.rpeHeader}>
+            <Text style={styles.rpeLabel}>How hard was this set?</Text>
+            <Text style={styles.rpeHint}>Coach uses this to adjust your next workout</Text>
+          </View>
+          <View style={styles.rpeScaleLabels}>
+            <Text style={styles.rpeScaleText}>Easy</Text>
+            <Text style={styles.rpeScaleText}>Max effort</Text>
+          </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.rpeBubbles}>
             {[1,2,3,4,5,6,7,8,9,10].map(n => (
               <TouchableOpacity
                 key={n}
-                style={[styles.rpeBubble, set.rpe === n && styles.rpeBubbleSelected]}
+                style={[
+                  styles.rpeBubble,
+                  set.rpe === n && styles.rpeBubbleSelected,
+                  n >= 8 && set.rpe === n && styles.rpeBubbleHard,
+                ]}
                 onPress={() => onRpeChange?.(set.rpe === n ? null : n)}
               >
                 <Text style={[styles.rpeBubbleText, set.rpe === n && styles.rpeBubbleTextSelected]}>{n}</Text>
@@ -138,20 +165,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkBtnDone: { borderColor: Colors.success, backgroundColor: Colors.success + '20' },
-rpeRow: { flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: Spacing.sm },
-  rpeLabel: { fontSize: FontSize.xs, color: Colors.textMuted, fontWeight: FontWeight.bold },
+  deleteBtn: { padding: 4, marginLeft: 2 },
+  rpeSection: { marginTop: Spacing.sm, paddingTop: Spacing.sm, borderTopWidth: 1, borderTopColor: Colors.bgCardBorder + '60' },
+  rpeHeader: { marginBottom: 4 },
+  rpeLabel: { fontSize: FontSize.xs, color: Colors.textSecondary, fontWeight: FontWeight.bold },
+  rpeHint: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 1 },
+  rpeScaleLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+  rpeScaleText: { fontSize: 9, color: Colors.textMuted },
   rpeBubbles: { flexGrow: 0 },
   rpeBubble: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     borderWidth: 1,
     borderColor: Colors.bgCardBorder,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 4,
+    marginRight: 5,
   },
   rpeBubbleSelected: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  rpeBubbleHard: { backgroundColor: Colors.secondary, borderColor: Colors.secondary },
   rpeBubbleText: { fontSize: FontSize.xs, color: Colors.textSecondary },
   rpeBubbleTextSelected: { color: '#fff', fontWeight: FontWeight.bold },
 });

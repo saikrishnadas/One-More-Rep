@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { db } from '@/db/client';
 import { progressPhotos } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { generateId, formatDate } from '@/lib/utils';
 
 interface ProgressPhoto {

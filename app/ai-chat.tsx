@@ -32,7 +32,7 @@ const WELCOME: ChatMessage = {
 function PlanTab() {
   const { user, profile } = useAuthStore();
   const { data: onboarding } = useOnboardingStore();
-  const { startWorkout, addExercise } = useWorkoutStore();
+  const { startWorkout, addExerciseWithPlan } = useWorkoutStore();
 
   const [recoveryMap, setRecoveryMap] = useState<Record<string, { status: string; recoveryPct: number }>>({});
   const [selectedMuscles, setSelectedMuscles] = useState<Set<MuscleGroupKey>>(new Set());
@@ -40,10 +40,43 @@ function PlanTab() {
   const [plan, setPlan] = useState<WorkoutPlan | null>(null);
   const [loading, setLoading] = useState(false);
   const [addedToWorkout, setAddedToWorkout] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (user) getMuscleRecovery(user.id, profile?.goal).then(setRecoveryMap as any).catch(() => {});
   }, [user]);
+
+  // Auto-generate plan after 800ms when muscle selection changes
+  useEffect(() => {
+    if (selectedMuscles.size === 0 || !user) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      generatePlan(Array.from(selectedMuscles), Array.from(selectedSections));
+    }, 800);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [selectedMuscles, selectedSections]);
+
+  async function generatePlan(muscles: string[], sections: string[]) {
+    if (muscles.length === 0 || !user) return;
+    setLoading(true);
+    setPlan(null);
+    setAddedToWorkout(false);
+    try {
+      const result = await generateWorkoutPlan(
+        user.id,
+        muscles,
+        sections,
+        onboarding?.fitnessLevel ?? 'intermediate',
+        profile?.goal ?? null,
+        recoveryMap
+      );
+      setPlan(result);
+    } catch {
+      // generateWorkoutPlan now always returns a local fallback — this catch is a safety net only
+    } finally {
+      setLoading(false);
+    }
+  }
 
   function toggleMuscle(key: MuscleGroupKey) {
     setSelectedMuscles(prev => {
@@ -66,37 +99,16 @@ function PlanTab() {
     setAddedToWorkout(false);
   }
 
-  async function handleGeneratePlan() {
-    if (selectedMuscles.size === 0 || !user) return;
-    setLoading(true);
-    setPlan(null);
-    try {
-      const result = await generateWorkoutPlan(
-        user.id,
-        Array.from(selectedMuscles),
-        Array.from(selectedSections),
-        onboarding?.fitnessLevel ?? 'intermediate',
-        profile?.goal ?? null,
-        recoveryMap
-      );
-      setPlan(result);
-    } catch (e) {
-      Alert.alert('Error', 'Could not generate plan. Check your connection.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
   function handleAddToWorkout() {
     if (!plan || !user) return;
     startWorkout();
-    // Each exercise already has a unique exerciseId from coach-planner (DB id or generated slot id)
     plan.exercises.forEach(ex => {
-      addExercise({
-        id: ex.exerciseId,
-        name: ex.name,
-        primaryMuscle: ex.primaryMuscle,
-      });
+      addExerciseWithPlan(
+        { id: ex.exerciseId, name: ex.name, primaryMuscle: ex.primaryMuscle },
+        ex.suggestedWeightKg,
+        ex.sets,
+        ex.reps
+      );
     });
     setAddedToWorkout(true);
     setTimeout(() => router.push('/active-workout'), 300);
@@ -113,7 +125,7 @@ function PlanTab() {
 
   return (
     <ScrollView contentContainerStyle={styles.planContent}>
-      <Text variant="label" style={styles.stepLabel}>1. Which muscle groups? (pick one or more)</Text>
+      <Text variant="label" style={styles.stepLabel}>Select muscle groups — Coach auto-generates your plan</Text>
       <View style={styles.muscleGrid}>
         {MUSCLE_GROUPS.map(group => {
           const recovery = recoveryMap[group.key];
@@ -167,10 +179,6 @@ function PlanTab() {
         </>
       )}
 
-      {selectedMuscles.size > 0 && !plan && !loading && (
-        <Button label="Generate My Workout" onPress={handleGeneratePlan} />
-      )}
-
       {loading && (
         <View style={styles.center}>
           <ActivityIndicator color={Colors.primary} />
@@ -183,6 +191,12 @@ function PlanTab() {
           <Card style={{ gap: Spacing.sm }}>
             <Text variant="title" color={Colors.primary}>{plan.title}</Text>
             <Text variant="caption">{plan.coachNote}</Text>
+            {plan.coachNote.startsWith('Offline') && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.warning }} />
+                <Text style={{ fontSize: 10, color: Colors.warning }}>AI unavailable — using local plan</Text>
+              </View>
+            )}
           </Card>
 
           {plan.exercises.map((ex, i) => (
@@ -208,8 +222,8 @@ function PlanTab() {
             <Button label="Start This Workout" onPress={handleAddToWorkout} />
           )}
 
-          <TouchableOpacity onPress={() => { setSelectedSections(new Set()); setPlan(null); }} style={styles.resetBtn}>
-            <Text style={styles.resetText}>← Change focus</Text>
+          <TouchableOpacity onPress={() => { setSelectedSections(new Set()); setPlan(null); setAddedToWorkout(false); }} style={styles.resetBtn}>
+            <Text style={styles.resetText}>← Change focus / regenerate</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -243,8 +257,14 @@ function ChatTab() {
     try {
       const reply = await sendChatMessage(newMessages.slice(-10), context);
       setMessages(m => [...m, { role: 'assistant', content: reply }]);
-    } catch {
-      setMessages(m => [...m, { role: 'assistant', content: 'Connection issue — try again.' }]);
+    } catch (e: any) {
+      const msg = e?.message ?? String(e);
+      const display = msg.includes('ANTHROPIC_API_KEY')
+        ? '⚠️ API key not configured. Run: supabase secrets set ANTHROPIC_API_KEY=sk-ant-...'
+        : msg.includes('not deployed') || msg.includes('404')
+        ? '⚠️ Coach function not deployed. Run: supabase functions deploy ai-trainer-chat'
+        : `Connection issue: ${msg}`;
+      setMessages(m => [...m, { role: 'assistant', content: display }]);
     } finally {
       setLoading(false);
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);

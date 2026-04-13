@@ -21,6 +21,7 @@ interface ExerciseBlockProps {
   exercise: ActiveExercise;
   onAddSet: () => void;
   onRemove: () => void;
+  onRemoveSet: (setId: string) => void;
   onWeightChange: (setId: string, value: number) => void;
   onRepsChange: (setId: string, value: number) => void;
   onCompleteSet: (setId: string) => void;
@@ -37,7 +38,7 @@ const MUSCLE_COLORS: Record<string, string> = {
 };
 
 export function ExerciseBlock({
-  exercise, onAddSet, onRemove,
+  exercise, onAddSet, onRemove, onRemoveSet,
   onWeightChange, onRepsChange, onCompleteSet, onUncompleteSet, onRpeChange,
   recoveryStatus,
 }: ExerciseBlockProps) {
@@ -100,7 +101,8 @@ export function ExerciseBlock({
         <Text style={[styles.colLabel, { width: 24 }]}>#</Text>
         <Text style={[styles.colLabel, { flex: 1 }]}>Weight</Text>
         <Text style={[styles.colLabel, { flex: 1 }]}>Reps</Text>
-        <Text style={[styles.colLabel, { width: 36 }]}></Text>
+        <Text style={[styles.colLabel, { width: 36 }]}>{/* check */}</Text>
+        <Text style={[styles.colLabel, { width: 22 }]}>{/* del */}</Text>
       </View>
 
       {exercise.sets.map((set) => (
@@ -116,6 +118,7 @@ export function ExerciseBlock({
             onComplete={() => onCompleteSet(set.id)}
             onUncomplete={() => onUncompleteSet(set.id)}
             onRpeChange={(rpe) => onRpeChange(set.id, rpe)}
+            onRemove={exercise.sets.length > 1 ? () => onRemoveSet(set.id) : undefined}
           />
         </View>
       ))}

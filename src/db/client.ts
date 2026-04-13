@@ -159,6 +159,14 @@ export async function initDatabase() {
     // Column already exists - ignore
   }
 
+  // Migrate: add session_rpe and calories_burned to workout_sessions
+  try {
+    await sqliteDb.execAsync('ALTER TABLE workout_sessions ADD COLUMN session_rpe REAL;');
+  } catch {}
+  try {
+    await sqliteDb.execAsync('ALTER TABLE workout_sessions ADD COLUMN calories_burned INTEGER;');
+  } catch {}
+
   try {
     await sqliteDb.execAsync(`CREATE TABLE IF NOT EXISTS cheat_day_logs (
       id text PRIMARY KEY,

@@ -38,11 +38,15 @@ interface WorkoutState {
   exercises: ActiveExercise[];
   elapsedSeconds: number;
   isActive: boolean;
+  sessionRpe: number | null;
 
   startWorkout: () => void;
   addExercise: (exercise: { id: string; name: string; primaryMuscle: string }) => void;
+  addExerciseWithPlan: (exercise: { id: string; name: string; primaryMuscle: string }, suggestedWeightKg: number, setCount: number, repsStr: string) => void;
+  saveSessionRpe: (sessionId: string, rpe: number) => Promise<void>;
   removeExercise: (exerciseId: string) => void;
   addSet: (exerciseId: string) => void;
+  removeSet: (exerciseId: string, setId: string) => void;
   updateSet: (exerciseId: string, setId: string, field: 'weightKg' | 'reps', value: number) => void;
   markSetPr: (exerciseId: string, setId: string, isPr: boolean) => void;
   completeSet: (exerciseId: string, setId: string) => Promise<void>;
@@ -60,6 +64,7 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
   exercises: [],
   elapsedSeconds: 0,
   isActive: false,
+  sessionRpe: null,
 
   startWorkout: () => {
     set({
@@ -68,6 +73,7 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
       exercises: [],
       elapsedSeconds: 0,
       isActive: true,
+      sessionRpe: null,
     });
   },
 
@@ -89,8 +95,51 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
     });
   },
 
+  addExerciseWithPlan: (exercise, suggestedWeightKg, setCount, repsStr) => {
+    const { exercises } = get();
+    if (exercises.find((e) => e.exerciseId === exercise.id)) return;
+    const reps = parseInt(repsStr.split('-')[0]) || 10;
+    const sets: ActiveSet[] = Array.from({ length: setCount }, (_, i) => ({
+      id: randomUUID(),
+      setNumber: i + 1,
+      weightKg: suggestedWeightKg,
+      reps,
+      completed: false,
+      isPr: false,
+    }));
+    set({
+      exercises: [
+        ...exercises,
+        { exerciseId: exercise.id, exerciseName: exercise.name, primaryMuscle: exercise.primaryMuscle, sets },
+      ],
+    });
+  },
+
+  saveSessionRpe: async (sessionId, rpe) => {
+    set({ sessionRpe: rpe });
+    try {
+      await db.update(workoutSessions).set({ sessionRpe: rpe }).where(eq(workoutSessions.id, sessionId));
+    } catch {
+      // Ignore if migration hasn't run yet
+    }
+  },
+
   removeExercise: (exerciseId) => {
     set({ exercises: get().exercises.filter((e) => e.exerciseId !== exerciseId) });
+  },
+
+  removeSet: (exerciseId, setId) => {
+    set({
+      exercises: get().exercises.map((e) => {
+        if (e.exerciseId !== exerciseId) return e;
+        const filtered = e.sets.filter((s) => s.id !== setId);
+        // Renumber remaining working sets
+        return {
+          ...e,
+          sets: filtered.map((s, i) => s.setNumber < 0 ? s : { ...s, setNumber: i + 1 }),
+        };
+      }),
+    });
   },
 
   addSet: (exerciseId) => {
@@ -272,12 +321,12 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
       musclesWorked,
     };
 
-    set({ sessionId: null, startedAt: null, exercises: [], elapsedSeconds: 0, isActive: false });
+    set({ sessionId: null, startedAt: null, exercises: [], elapsedSeconds: 0, isActive: false, sessionRpe: null });
     return summary;
   },
 
   discardWorkout: () => {
-    set({ sessionId: null, startedAt: null, exercises: [], elapsedSeconds: 0, isActive: false });
+    set({ sessionId: null, startedAt: null, exercises: [], elapsedSeconds: 0, isActive: false, sessionRpe: null });
   },
 
   tick: () => set((state) => ({ elapsedSeconds: state.elapsedSeconds + 1 })),
