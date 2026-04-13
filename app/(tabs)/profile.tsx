@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/stores/auth';
@@ -14,17 +14,23 @@ import { LevelUpModal } from '@/components/gamification/LevelUpModal';
 import { BadgeToast } from '@/components/gamification/BadgeToast';
 import { BadgeShelf } from '@/components/gamification/BadgeShelf';
 import { XpBar } from '@/components/gamification/XpBar';
-import { Check, X, Ruler, Upload, Flame, Dumbbell, Frown, Target, Settings, TrendingUp, Camera } from 'lucide-react-native';
+import { Check, X, Ruler, Upload, Flame, Dumbbell, Frown, Target, Settings, TrendingUp, Camera, Heart } from 'lucide-react-native';
 import { HabitIcon } from '@/components/ui/HabitIcon';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/lib/constants';
 import { formatDate } from '@/lib/utils';
 import { syncHabits } from '@/lib/habit-sync';
 import { scheduleStreakAlert, cancelHabitReminder, scheduleHabitReminderInteractive } from '@/lib/notifications';
+import { useHealthPlatformStore } from '../../src/stores/healthPlatform';
+import { useSubscriptionStore } from '../../src/stores/subscription';
+import { ProGate } from '../../src/components/ui/ProGate';
 
 export default function ProfileScreen() {
   const { user, profile, signOut } = useAuthStore();
   const { habits, logs, loadHabits, loadLogs, createHabit, deleteHabit, toggleHabit } = useHabitStore();
   const { earnedBadges, pendingLevelUp, pendingBadges, loadBadges, setPendingLevelUp, clearPendingBadge } = useGamificationStore();
+  const { connected, hasPermission, requestPermission, disconnect } = useHealthPlatformStore();
+  const { isPro } = useSubscriptionStore();
+  const userAge = 30;
   const [showCreate, setShowCreate] = useState(false);
 
   const today = formatDate(new Date());
@@ -142,6 +148,47 @@ export default function ProfileScreen() {
             </Text>
           </Card>
         )}
+
+        {/* Health Platform Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Health & Fitness Watch</Text>
+          <ProGate feature="Watch & Health Integration" compact>
+            <TouchableOpacity
+              style={[styles.linkCard, connected && styles.linkCardConnected]}
+              onPress={() => !connected ? requestPermission(userAge) : undefined}
+              activeOpacity={connected ? 1 : 0.7}
+            >
+              <View style={styles.linkCardLeft}>
+                <View style={styles.linkIconContainer}>
+                  <Heart size={18} color={Colors.primary} />
+                </View>
+                <View>
+                  <Text style={styles.linkCardTitle}>
+                    {Platform.OS === 'ios' ? 'Apple Health' : 'Google Health'}
+                  </Text>
+                  <Text style={styles.linkCardSubtitle}>
+                    {connected
+                      ? 'Workouts, live HR & recovery insights'
+                      : 'Connect to unlock watch features'
+                    }
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.healthStatus}>
+                {connected ? (
+                  <>
+                    <Text style={styles.connectedText}>✓ Connected</Text>
+                    <TouchableOpacity onPress={disconnect} style={styles.disconnectBtn}>
+                      <Text style={styles.disconnectText}>Disconnect</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <Text style={styles.connectText}>Connect →</Text>
+                )}
+              </View>
+            </TouchableOpacity>
+          </ProGate>
+        </View>
 
         {/* Habits section */}
         <View style={styles.sectionHeader}>
@@ -320,4 +367,41 @@ const styles = StyleSheet.create({
   settingsLink: {},
   settingsCard: { gap: 4 },
   settingsText: { fontSize: FontSize.base, fontWeight: FontWeight.bold, color: Colors.textPrimary },
+  section: { gap: Spacing.sm },
+  sectionTitle: { fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5 },
+  linkCard: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.bgCardBorder,
+    padding: Spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  linkCardConnected: {
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.success,
+  },
+  linkCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    flex: 1,
+  },
+  linkIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: `${Colors.primary}20`,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  linkCardTitle: { fontSize: FontSize.base, fontWeight: FontWeight.bold, color: Colors.textPrimary },
+  linkCardSubtitle: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 2 },
+  healthStatus: { flexDirection: 'column', alignItems: 'flex-end', gap: Spacing.xs },
+  connectedText: { fontSize: FontSize.sm, color: Colors.success, fontWeight: FontWeight.medium },
+  disconnectBtn: { paddingVertical: 2 },
+  disconnectText: { fontSize: FontSize.xs, color: Colors.textSecondary },
+  connectText: { fontSize: FontSize.sm, color: Colors.primary, fontWeight: FontWeight.bold },
 });
