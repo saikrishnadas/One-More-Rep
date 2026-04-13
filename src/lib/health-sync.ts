@@ -1,13 +1,40 @@
 import { Pedometer } from 'expo-sensors';
 import { Platform } from 'react-native';
+import { useHealthPlatformStore } from '../stores/healthPlatform';
+import { readStepCount } from './health-platform';
+import { formatDate } from './utils';
 
 export interface HealthData {
   stepsToday: number;
   stepsAvailable: boolean;
 }
 
-/** Get today's step count using expo-sensors Pedometer */
+/** Get today's step count from the health platform (HealthKit / Health Connect).
+ *  Returns 0 if not connected or no permission. */
+export async function getTodayStepsFromHealth(): Promise<number> {
+  try {
+    const { connected, hasPermission } = useHealthPlatformStore.getState();
+    if (connected && hasPermission) {
+      return await readStepCount(formatDate(new Date()));
+    }
+  } catch {
+    // fall through
+  }
+  return 0;
+}
+
+/** Get today's step count — tries health platform first, falls back to expo-sensors Pedometer */
 export async function getTodaySteps(): Promise<HealthData> {
+  try {
+    const { connected, hasPermission } = useHealthPlatformStore.getState();
+    if (connected && hasPermission) {
+      const steps = await readStepCount(formatDate(new Date()));
+      if (steps > 0) return { stepsToday: steps, stepsAvailable: true };
+    }
+  } catch {
+    // fall through to pedometer
+  }
+
   try {
     const isAvailable = await Pedometer.isAvailableAsync();
     if (!isAvailable) {

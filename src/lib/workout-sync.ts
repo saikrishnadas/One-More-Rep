@@ -2,6 +2,7 @@ import { db } from '@/db/client';
 import { workoutSessions, workoutSets } from '@/db/schema';
 import { supabase } from '@/lib/supabase';
 import { eq } from 'drizzle-orm';
+import { useHealthPlatformStore } from '../stores/healthPlatform';
 
 export async function syncWorkoutSession(sessionId: string) {
   // Load session from local DB
@@ -52,4 +53,24 @@ export async function syncWorkoutSession(sessionId: string) {
     .update(workoutSessions)
     .set({ syncedAt: new Date() })
     .where(eq(workoutSessions.id, sessionId));
+
+  // Write workout to health platform (HealthKit / Health Connect) — failure is non-blocking
+  try {
+    const { connected, hasPermission, writeWorkoutToHealth } = useHealthPlatformStore.getState();
+    if (connected && hasPermission) {
+      const endDate = session.endedAt ?? new Date();
+      const startDate = session.startedAt
+        ? new Date(session.startedAt)
+        : new Date(endDate.getTime() - (session.durationSeconds ?? 0) * 1000);
+      await writeWorkoutToHealth({
+        startDate,
+        endDate: new Date(endDate),
+        workoutType: 'traditionalStrengthTraining',
+        calories: session.caloriesBurned ?? undefined,
+        totalVolume: session.totalVolumeKg ?? undefined,
+      });
+    }
+  } catch {
+    // Health write failure should not block workout save
+  }
 }
