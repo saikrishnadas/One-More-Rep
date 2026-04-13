@@ -30,6 +30,7 @@ export default function ActiveWorkoutScreen() {
   } = useWorkoutStore();
   const { user, profile } = useAuthStore();
   const { startHeartRateMonitoring, stopHeartRateMonitoring } = useHealthPlatformStore();
+  const liveHeartRate = useHealthPlatformStore((s) => s.liveHeartRate);
   const userAge = profile?.age ?? 30;
   const restTimerActive = useRestTimerStore((s) => s.active);
   const [showSearch, setShowSearch] = useState(false);
@@ -61,6 +62,12 @@ export default function ActiveWorkoutScreen() {
     startHeartRateMonitoring(userAge);
     return () => stopHeartRateMonitoring();
   }, []);
+
+  // Forward live HR to rest timer store so HR recovery bar works
+  useEffect(() => {
+    const { setCurrentHr } = useRestTimerStore.getState();
+    setCurrentHr(liveHeartRate, userAge);
+  }, [liveHeartRate, userAge]);
 
   const totalVolume = exercises
     .flatMap((e) => e.sets.filter((s) => s.completed))

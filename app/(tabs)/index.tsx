@@ -54,7 +54,7 @@ export default function HomeScreen() {
       if (connected) {
         fetchReadiness(userAge);
       }
-    }, [connected, userAge])
+    }, [connected, userAge, fetchReadiness])
   );
 
   useEffect(() => {

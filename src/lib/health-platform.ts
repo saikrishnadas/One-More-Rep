@@ -418,16 +418,17 @@ export async function readSleepData(date: string): Promise<SleepData> {
 
         const value: string = s.value ?? '';
         // HKCategoryValueSleepAnalysis values
+        // Only count INBED/ASLEEP toward totalMs — DEEP and REM are sub-stages
+        // already included in the ASLEEP record, so adding them to totalMs would
+        // double-count them.
         if (value === 'INBED' || value === 'ASLEEP') {
           totalMs += durationMs;
         }
         if (value === 'DEEP') {
           deepMs += durationMs;
-          totalMs += durationMs;
         }
         if (value === 'REM') {
           remMs += durationMs;
-          totalMs += durationMs;
         }
       }
 
@@ -783,7 +784,6 @@ export async function getWorkoutHRData(
     // We don't know the user's age here so we use a default of 30
     // (caller can use getHRZone directly with actual age for precise zoning)
     const DEFAULT_AGE = 30;
-    const maxHR = 220 - DEFAULT_AGE;
 
     const zoneCounts = { z1: 0, z2: 0, z3: 0, z4: 0, z5: 0 };
     for (const bpm of bpms) {

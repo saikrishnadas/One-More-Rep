@@ -13,6 +13,7 @@ import * as Notifications from 'expo-notifications';
 import { registerForPushNotifications, setupNotificationCategories } from '@/lib/notifications';
 import { useHabitStore } from '@/stores/habits';
 import { formatDate } from '@/lib/utils';
+import { useSubscriptionStore } from '../src/stores/subscription';
 
 const queryClient = new QueryClient();
 
@@ -20,6 +21,9 @@ export default function RootLayout() {
   const { setSession, fetchProfile } = useAuthStore();
 
   useEffect(() => {
+    // Hydrate subscription store so isPro is available immediately
+    useSubscriptionStore.getState().checkSubscription();
+
     // Initialize local DB and seed exercises
     initDatabase().then(() => seedExercises());
     registerForPushNotifications().catch(console.warn);
