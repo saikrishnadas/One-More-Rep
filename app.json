@@ -37,6 +37,7 @@
         "backgroundColor": "#0d0d0d"
       },
       "package": "com.gymbuddy.app",
+      "minSdkVersion": 26,
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "versionCode": 1,
