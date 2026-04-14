@@ -58,6 +58,14 @@
       "expo-router",
       "expo-sqlite",
       [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
+        }
+      ],
+      [
         "expo-camera",
         {
           "cameraPermission": "Allow Gym Buddy to scan barcodes."
