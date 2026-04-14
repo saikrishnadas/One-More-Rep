@@ -18,8 +18,8 @@ import { formatDuration, calculateWorkoutXp } from '@/lib/utils';
 import * as Haptics from 'expo-haptics';
 import { X, Dumbbell } from 'lucide-react-native';
 import { getMuscleRecovery, MuscleRecovery } from '@/lib/muscle-recovery';
-import HeartRateCard from '../src/components/workout/HeartRateCard';
-import { useHealthPlatformStore } from '../src/stores/healthPlatform';
+import HeartRateCard from '@/components/workout/HeartRateCard';
+import { useHealthPlatformStore } from '@/stores/healthPlatform';
 
 export default function ActiveWorkoutScreen() {
   const {

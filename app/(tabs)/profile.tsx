@@ -20,9 +20,9 @@ import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/lib/constants';
 import { formatDate } from '@/lib/utils';
 import { syncHabits } from '@/lib/habit-sync';
 import { scheduleStreakAlert, cancelHabitReminder, scheduleHabitReminderInteractive } from '@/lib/notifications';
-import { useHealthPlatformStore } from '../../src/stores/healthPlatform';
-import { useSubscriptionStore } from '../../src/stores/subscription';
-import { ProGate } from '../../src/components/ui/ProGate';
+import { useHealthPlatformStore } from '@/stores/healthPlatform';
+import { useSubscriptionStore } from '@/stores/subscription';
+import { ProGate } from '@/components/ui/ProGate';
 
 export default function ProfileScreen() {
   const { user, profile, signOut } = useAuthStore();

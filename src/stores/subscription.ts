@@ -16,7 +16,7 @@ const STORAGE_KEY_IS_PRO = 'isPro';
 const STORAGE_KEY_TRIAL_USED = 'trialUsed';
 
 export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
-  isPro: false,
+  isPro: true, // DEV: default true for testing
   trialUsed: false,
   isLoading: false,
 
@@ -24,7 +24,8 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     const isProRaw = await AsyncStorage.getItem(STORAGE_KEY_IS_PRO);
     const trialUsedRaw = await AsyncStorage.getItem(STORAGE_KEY_TRIAL_USED);
     set({
-      isPro: isProRaw === 'true',
+      // DEV: default to true if never set — remove this fallback in production
+      isPro: isProRaw === null ? true : isProRaw === 'true',
       trialUsed: trialUsedRaw === 'true',
     });
   },

@@ -13,7 +13,7 @@ import * as Notifications from 'expo-notifications';
 import { registerForPushNotifications, setupNotificationCategories } from '@/lib/notifications';
 import { useHabitStore } from '@/stores/habits';
 import { formatDate } from '@/lib/utils';
-import { useSubscriptionStore } from '../src/stores/subscription';
+import { useSubscriptionStore } from '@/stores/subscription';
 
 const queryClient = new QueryClient();
 

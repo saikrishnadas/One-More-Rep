@@ -17,7 +17,7 @@ import { useWorkoutStore } from '@/stores/workout';
 import { useAuthStore } from '@/stores/auth';
 import { useNutritionStore } from '@/stores/nutrition';
 import { getWorkoutHRData, getHRZoneInfo } from '../src/lib/health-platform';
-import { useHealthPlatformStore } from '../src/stores/healthPlatform';
+import { useHealthPlatformStore } from '@/stores/healthPlatform';
 import type { WorkoutHRData } from '../src/lib/health-platform';
 
 const RPE_LABELS: Record<number, string> = {
