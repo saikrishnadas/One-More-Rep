@@ -1,7 +1,7 @@
 import { db } from '../db/client';
 import { workoutSessions } from '../db/schema';
 import { eq } from 'drizzle-orm';
-import { formatDate } from '../utils';
+import { formatDate } from './utils';
 
 export interface TrainingLoadResult {
   score: number;              // 0-100 (7-day rolling)
