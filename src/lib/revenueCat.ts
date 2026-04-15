@@ -2,15 +2,15 @@ import { Platform } from 'react-native';
 
 // RevenueCat public API keys (safe to bundle in client code)
 // Replace with real keys from https://app.revenuecat.com
-const API_KEY_IOS = 'sk_lBKdENPWWIBSSSVBuzARyhKhLnwcE';
-const API_KEY_ANDROID = 'sk_HdgaNTYsBWZrcrJHuGvcHIHLTWNKR';
+const API_KEY_IOS = 'YET_TO_BE_GENERATED';
+const API_KEY_ANDROID = 'goog_XLVffVYRhFrtJMnpzTqivMUJPQf';
 
 export const PRODUCT_IDS = {
   monthly: 'voltrep_pro_monthly',
   yearly: 'voltrep_pro_yearly',
 } as const;
 
-export const ENTITLEMENT_ID = 'pro';
+export const ENTITLEMENT_ID = 'Voltrep Pro';
 
 // Dev mode: skip RevenueCat, use mock purchases
 export const USE_MOCK_SUBSCRIPTIONS = __DEV__;
