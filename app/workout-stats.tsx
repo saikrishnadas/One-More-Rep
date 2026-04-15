@@ -15,6 +15,8 @@ import { PRList } from '@/components/stats/PRList';
 import { OneRMChart, OneRMDataPoint } from '@/components/stats/OneRMChart';
 import { IntensityChart } from '@/components/stats/IntensityChart';
 import { TrainingWindowChart } from '@/components/stats/TrainingWindowChart';
+import { SleepPerformanceChart } from '@/components/stats/SleepPerformanceChart';
+import { TrainingLoadCard } from '@/components/home/TrainingLoadCard';
 import type { PRRecord } from '@/components/stats/PRList';
 import { ChevronLeft } from 'lucide-react-native';
 import { Colors, Spacing, FontSize, FontWeight, Radius } from '@/lib/constants';
@@ -213,6 +215,9 @@ export default function WorkoutStatsScreen() {
           <PRList records={prRecords} />
         </Card>
 
+        {/* Training Load */}
+        <TrainingLoadCard userId={user?.id ?? ''} />
+
         {/* Intensity Trend */}
         <Card>
           <Text variant="title" style={styles.cardTitle}>Intensity Trend</Text>
@@ -240,6 +245,23 @@ export default function WorkoutStatsScreen() {
               </Text>
               <Text style={{ color: Colors.textMuted, fontSize: FontSize.sm, marginTop: Spacing.xs }}>
                 PRO: Discover when you&apos;re strongest
+              </Text>
+            </TouchableOpacity>
+          )}
+        </Card>
+
+        {/* Sleep vs Performance */}
+        <Card style={{ marginTop: Spacing.md, padding: Spacing.md }}>
+          <Text variant="title" style={{ marginBottom: Spacing.sm }}>Sleep vs Performance</Text>
+          {isPro ? (
+            <SleepPerformanceChart userId={user?.id ?? ''} />
+          ) : (
+            <TouchableOpacity onPress={() => router.push('/paywall' as any)} activeOpacity={0.7}>
+              <Text style={{ color: Colors.textMuted, fontSize: FontSize.md }}>
+                Sleep vs Performance 🔒
+              </Text>
+              <Text style={{ color: Colors.textMuted, fontSize: FontSize.sm, marginTop: Spacing.xs }}>
+                PRO: See how sleep affects your strength
               </Text>
             </TouchableOpacity>
           )}
