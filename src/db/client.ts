@@ -193,4 +193,11 @@ export async function initDatabase() {
       weight real
     )`);
   } catch {}
+
+  // Phase 12: Hyrox/Cardio support
+  try { await sqliteDb.execAsync('ALTER TABLE exercises ADD COLUMN exercise_type TEXT DEFAULT \'strength\';'); } catch {}
+  try { await sqliteDb.execAsync('ALTER TABLE workout_sets ADD COLUMN duration_seconds REAL;'); } catch {}
+  try { await sqliteDb.execAsync('ALTER TABLE workout_sets ADD COLUMN distance_meters REAL;'); } catch {}
+  try { await sqliteDb.execAsync('ALTER TABLE workout_sessions ADD COLUMN total_distance_meters REAL DEFAULT 0;'); } catch {}
+  try { await sqliteDb.execAsync('ALTER TABLE workout_sessions ADD COLUMN total_cardio_seconds INTEGER DEFAULT 0;'); } catch {}
 }

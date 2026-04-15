@@ -22,6 +22,7 @@ export const exercises = sqliteTable('exercises', {
   instructions: text('instructions'),
   imageUrl: text('image_url'),
   isCustom: integer('is_custom', { mode: 'boolean' }).default(false),
+  exerciseType: text('exercise_type').default('strength'),
 });
 
 // Local workout sessions (source of truth, syncs to Supabase)
@@ -39,6 +40,8 @@ export const workoutSessions = sqliteTable('workout_sessions', {
   sessionRpe: real('session_rpe'),
   caloriesBurned: integer('calories_burned'),
   intensityScore: real('intensity_score'),
+  totalDistanceMeters: real('total_distance_meters').default(0),
+  totalCardioSeconds: integer('total_cardio_seconds').default(0),
 });
 
 // Local workout sets
@@ -52,6 +55,8 @@ export const workoutSets = sqliteTable('workout_sets', {
   isPr: integer('is_pr', { mode: 'boolean' }).default(false),
   completedAt: integer('completed_at', { mode: 'timestamp_ms' }),
   rpe: real('rpe'),  // nullable, 1-10
+  durationSeconds: real('duration_seconds'),
+  distanceMeters: real('distance_meters'),
 });
 
 // Local nutrition logs

@@ -14,6 +14,8 @@ export interface ActiveSet {
   isPr: boolean;
   rpe?: number | null;
   isWarmup?: boolean;
+  durationSeconds?: number | null;
+  distanceMeters?: number | null;
 }
 
 export interface ActiveExercise {
@@ -21,6 +23,7 @@ export interface ActiveExercise {
   exerciseName: string;
   primaryMuscle: string;
   sets: ActiveSet[];
+  exerciseType?: string; // 'strength' | 'cardio_distance' | 'cardio_time' | 'weighted_distance'
 }
 
 export interface WorkoutSummary {
