@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -6,6 +6,7 @@ import { X } from 'lucide-react-native';
 import { Text } from '@/components/ui/Text';
 import { Button } from '@/components/ui/Button';
 import { useSubscriptionStore } from '@/stores/subscription';
+import { PRODUCT_IDS } from '@/lib/revenueCat';
 import { Colors, Spacing, FontSize, FontWeight, Radius } from '@/lib/constants';
 
 type Plan = 'monthly' | 'yearly';
@@ -20,19 +21,34 @@ const FEATURES = [
   { emoji: '📋', text: 'Weekly AI Training Report' },
   { emoji: '📈', text: 'Sleep-Performance Correlation' },
   { emoji: '📤', text: 'Data export (CSV)' },
-];
+  { emoji: '🏃', text: 'Hyrox Training', comingSoon: true },
+] as const;
 
 export default function PaywallScreen() {
   const [selectedPlan, setSelectedPlan] = useState<Plan>('yearly');
-  const { isPro, trialUsed, isLoading, purchase, restore, startTrial } = useSubscriptionStore();
+  const { isPro, trialUsed, isLoading, purchase, restore, startTrial, packages, fetchOfferings } = useSubscriptionStore();
+
+  // Fetch real pricing from RevenueCat on mount
+  useEffect(() => {
+    fetchOfferings();
+  }, []);
+
+  // Dynamic prices from RevenueCat (fallback to hardcoded)
+  const monthlyPkg = packages.find((p: any) => p.product?.identifier === PRODUCT_IDS.monthly);
+  const yearlyPkg = packages.find((p: any) => p.product?.identifier === PRODUCT_IDS.yearly);
+  const monthlyPrice = monthlyPkg?.product?.priceString ?? '₹299';
+  const yearlyPrice = yearlyPkg?.product?.priceString ?? '₹1,999';
 
   const handleCTA = async () => {
     if (!trialUsed) {
-      await startTrial();
+      await startTrial(selectedPlan);
     } else {
-      await purchase();
+      await purchase(selectedPlan);
     }
-    router.back();
+    // Only dismiss if purchase succeeded
+    if (useSubscriptionStore.getState().isPro) {
+      router.back();
+    }
   };
 
   const handleRestore = async () => {
@@ -68,9 +84,11 @@ export default function PaywallScreen() {
         {/* Feature list */}
         <View style={styles.featureList}>
           {FEATURES.map((feature, index) => (
-            <View key={index} style={styles.featureRow}>
+            <View key={index} style={[styles.featureRow, 'comingSoon' in feature && feature.comingSoon && { opacity: 0.5 }]}>
               <Text style={styles.featureEmoji}>{feature.emoji}</Text>
-              <Text style={styles.featureText}>{feature.text}</Text>
+              <Text style={styles.featureText}>
+                {feature.text}{'comingSoon' in feature && feature.comingSoon ? ' (Coming Soon)' : ''}
+              </Text>
             </View>
           ))}
         </View>
@@ -88,7 +106,7 @@ export default function PaywallScreen() {
           >
             <Text style={styles.planName}>Monthly</Text>
             <Text style={[styles.planPrice, selectedPlan === 'monthly' && styles.planPriceSelected]}>
-              ₹299
+              {monthlyPrice}
             </Text>
             <Text style={styles.planPeriod}>/month</Text>
           </TouchableOpacity>
@@ -107,7 +125,7 @@ export default function PaywallScreen() {
             </View>
             <Text style={styles.planName}>Yearly</Text>
             <Text style={[styles.planPrice, selectedPlan === 'yearly' && styles.planPriceSelected]}>
-              ₹1,999
+              {yearlyPrice}
             </Text>
             <Text style={styles.planPeriod}>/year</Text>
           </TouchableOpacity>

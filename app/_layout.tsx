@@ -14,6 +14,7 @@ import { registerForPushNotifications, setupNotificationCategories } from '@/lib
 import { useHabitStore } from '@/stores/habits';
 import { formatDate } from '@/lib/utils';
 import { useSubscriptionStore } from '@/stores/subscription';
+import { initRevenueCat, loginRevenueCat, logoutRevenueCat } from '@/lib/revenueCat';
 
 const queryClient = new QueryClient();
 
@@ -21,8 +22,10 @@ export default function RootLayout() {
   const { setSession, fetchProfile } = useAuthStore();
 
   useEffect(() => {
-    // Hydrate subscription store so isPro is available immediately
-    useSubscriptionStore.getState().checkSubscription();
+    // Initialize RevenueCat then hydrate subscription state
+    initRevenueCat().then(() => {
+      useSubscriptionStore.getState().checkSubscription();
+    });
 
     // Initialize local DB and seed exercises
     initDatabase().then(() => seedExercises());
@@ -31,12 +34,20 @@ export default function RootLayout() {
     // Listen for auth changes
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) fetchProfile();
+      if (session) {
+        fetchProfile();
+        loginRevenueCat(session.user.id);
+      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (session) fetchProfile();
+      if (session) {
+        fetchProfile();
+        loginRevenueCat(session.user.id);
+      } else {
+        logoutRevenueCat();
+      }
     });
 
     return () => subscription.unsubscribe();

@@ -81,7 +81,8 @@
       ],
       "expo-secure-store",
       "react-native-health-connect",
-      "./plugins/withHealthConnectPermissionDelegate.js"
+      "./plugins/withHealthConnectPermissionDelegate.js",
+      "react-native-purchases"
     ],
     "experiments": {
       "typedRoutes": true

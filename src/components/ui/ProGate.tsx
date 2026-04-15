@@ -3,10 +3,10 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ActivityIndicator,
   StyleSheet,
 } from 'react-native';
 import { Crown } from 'lucide-react-native';
+import { router } from 'expo-router';
 import { useSubscriptionStore } from '@/stores/subscription';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/lib/constants';
 
@@ -16,8 +16,10 @@ interface ProGateProps {
   compact?: boolean;
 }
 
+const openPaywall = () => router.push('/paywall' as any);
+
 export function ProGate({ children, feature, compact = false }: ProGateProps) {
-  const { isPro, isLoading, startTrial, purchase } = useSubscriptionStore();
+  const { isPro } = useSubscriptionStore();
 
   if (isPro) {
     return <>{children}</>;
@@ -25,27 +27,18 @@ export function ProGate({ children, feature, compact = false }: ProGateProps) {
 
   if (compact) {
     return (
-      <View style={styles.compactCard}>
+      <TouchableOpacity style={styles.compactCard} onPress={openPaywall} activeOpacity={0.8}>
         <Crown size={14} color={Colors.primary} />
         <Text style={styles.compactLabel}>Pro Feature</Text>
-        <TouchableOpacity
-          style={styles.compactButton}
-          onPress={purchase}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator size="small" color={Colors.primary} />
-          ) : (
-            <Text style={styles.compactButtonText}>Upgrade</Text>
-          )}
-        </TouchableOpacity>
-      </View>
+        <View style={styles.compactButton}>
+          <Text style={styles.compactButtonText}>Upgrade</Text>
+        </View>
+      </TouchableOpacity>
     );
   }
 
   return (
-    <View style={styles.fullCard}>
-      {/* Orange border overlay */}
+    <TouchableOpacity style={styles.fullCard} onPress={openPaywall} activeOpacity={0.8}>
       <View style={styles.crownContainer}>
         <Crown size={32} color={Colors.primary} />
       </View>
@@ -57,34 +50,8 @@ export function ProGate({ children, feature, compact = false }: ProGateProps) {
       ) : null}
 
       <Text style={styles.pricing}>₹299/month · ₹1,999/year</Text>
-      <Text style={styles.trialSubtitle}>7-day free trial included</Text>
-
-      {isLoading ? (
-        <ActivityIndicator
-          size="small"
-          color={Colors.primary}
-          style={styles.loader}
-        />
-      ) : (
-        <View style={styles.buttonStack}>
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={startTrial}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.primaryButtonText}>Start 7-Day Free Trial</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={purchase}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.secondaryButtonText}>Buy Pro</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </View>
+      <Text style={styles.trialSubtitle}>Tap to see plans & start free trial</Text>
+    </TouchableOpacity>
   );
 }
 
