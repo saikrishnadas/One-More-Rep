@@ -167,6 +167,11 @@ export async function initDatabase() {
     await sqliteDb.execAsync('ALTER TABLE workout_sessions ADD COLUMN calories_burned INTEGER;');
   } catch {}
 
+  // Phase 11: intensity score
+  try {
+    await sqliteDb.execAsync('ALTER TABLE workout_sessions ADD COLUMN intensity_score REAL;');
+  } catch {}
+
   try {
     await sqliteDb.execAsync(`CREATE TABLE IF NOT EXISTS cheat_day_logs (
       id text PRIMARY KEY,

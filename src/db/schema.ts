@@ -38,6 +38,7 @@ export const workoutSessions = sqliteTable('workout_sessions', {
   syncedAt: integer('synced_at', { mode: 'timestamp_ms' }),
   sessionRpe: real('session_rpe'),
   caloriesBurned: integer('calories_burned'),
+  intensityScore: real('intensity_score'),
 });
 
 // Local workout sets
