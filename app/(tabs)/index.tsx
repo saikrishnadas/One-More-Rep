@@ -29,6 +29,7 @@ import { useOnboardingStore } from "@/stores/onboarding";
 import { MuscleStatusCard } from "@/components/home/MuscleStatusCard";
 import { WaterCard } from "@/components/home/WaterCard";
 import { ReadinessCard } from "@/components/home/ReadinessCard";
+import { TrainingWindowCard } from "@/components/home/TrainingWindowCard";
 import { useWaterStore } from "@/stores/water";
 import { useHealthPlatformStore } from "@/stores/healthPlatform";
 import { Flame, Footprints, Zap } from "lucide-react-native";
@@ -236,6 +237,7 @@ export default function HomeScreen() {
         <MuscleStatusCard userId={user?.id ?? ""} goal={profile?.goal} />
 
         <ReadinessCard />
+        <TrainingWindowCard userId={user?.id ?? ''} />
 
         <Button
           label="START WORKOUT"
