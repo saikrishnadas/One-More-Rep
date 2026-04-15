@@ -20,6 +20,7 @@ import { X, Dumbbell } from 'lucide-react-native';
 import { getMuscleRecovery, MuscleRecovery } from '@/lib/muscle-recovery';
 import HeartRateCard from '@/components/workout/HeartRateCard';
 import { useHealthPlatformStore } from '@/stores/healthPlatform';
+import { useSubscriptionStore } from '@/stores/subscription';
 
 export default function ActiveWorkoutScreen() {
   const {
@@ -48,7 +49,10 @@ export default function ActiveWorkoutScreen() {
   // Load muscle recovery status
   useEffect(() => {
     if (!user) return;
-    getMuscleRecovery(user.id, profile?.goal).then(setMuscleRecovery);
+    getMuscleRecovery(user.id, profile?.goal, {
+      readinessScore: useHealthPlatformStore.getState().readinessScore,
+      isPro: useSubscriptionStore.getState().isPro,
+    }).then(setMuscleRecovery);
   }, [user?.id]);
 
   // Timer

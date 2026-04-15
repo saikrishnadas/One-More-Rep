@@ -15,6 +15,9 @@ import {
   MuscleRecovery,
   RecoveryStatus,
 } from "@/lib/muscle-recovery";
+import { useHealthPlatformStore } from '@/stores/healthPlatform';
+import { useSubscriptionStore } from '@/stores/subscription';
+import { router } from 'expo-router';
 
 interface Props {
   userId: string;
@@ -38,11 +41,14 @@ interface MuscleEntry {
 export function MuscleStatusCard({ userId, goal }: Props) {
   const [muscles, setMuscles] = useState<MuscleEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const readinessScore = useHealthPlatformStore((s) => s.readinessScore);
+  const readinessData = useHealthPlatformStore((s) => s.readinessData);
+  const isPro = useSubscriptionStore((s) => s.isPro);
 
   useEffect(() => {
     if (!userId) return;
     setLoading(true);
-    getMuscleRecovery(userId, goal)
+    getMuscleRecovery(userId, goal, { readinessScore, isPro })
       .then((record) => {
         const entries = Object.entries(record).map(([name, data]) => ({
           name,
@@ -51,7 +57,7 @@ export function MuscleStatusCard({ userId, goal }: Props) {
         setMuscles(entries);
       })
       .finally(() => setLoading(false));
-  }, [userId, goal]);
+  }, [userId, goal, readinessScore, isPro]);
 
   function handleChipPress(entry: MuscleEntry) {
     const { name, data } = entry;
@@ -106,6 +112,26 @@ export function MuscleStatusCard({ userId, goal }: Props) {
             );
           })}
         </ScrollView>
+      )}
+
+      {/* PRO lock banner for free users */}
+      {!isPro && (
+        <TouchableOpacity
+          style={{ marginTop: 8, paddingVertical: 6, paddingHorizontal: 12 }}
+          onPress={() => router.push('/paywall')}
+          activeOpacity={0.7}
+        >
+          <Text style={{ fontSize: 11, color: '#666666' }}>
+            🔒 PRO: Smart recovery using your sleep & HRV data
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Watch note for Pro users missing sleep data */}
+      {isPro && readinessData && readinessData.sleepHours === null && (
+        <Text style={{ marginTop: 8, fontSize: 11, color: '#9ca3af', paddingHorizontal: 12 }}>
+          ⌚ Wear your watch to sleep for more accurate recovery data
+        </Text>
       )}
     </Card>
   );
