@@ -129,7 +129,7 @@ export async function exportReportCSV(report: PeriodReport): Promise<void> {
   lines.push(report.aiNarrative.replace(/,/g, ' '));
 
   const csv = lines.join('\n');
-  const filename = `gym_buddy_report_${report.periodStart}_to_${report.periodEnd}.csv`;
+  const filename = `voltrep_report_${report.periodStart}_to_${report.periodEnd}.csv`;
   const uri = (FileSystem.cacheDirectory ?? '') + filename;
   await FileSystem.writeAsStringAsync(uri, csv, { encoding: FileSystem.EncodingType.UTF8 });
   await Sharing.shareAsync(uri, { mimeType: 'text/csv', dialogTitle: 'Export 10-Day Report' });

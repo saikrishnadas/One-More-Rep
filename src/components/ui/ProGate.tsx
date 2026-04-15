@@ -43,7 +43,7 @@ export function ProGate({ children, feature, compact = false }: ProGateProps) {
         <Crown size={32} color={Colors.primary} />
       </View>
 
-      <Text style={styles.title}>Gym Buddy Pro</Text>
+      <Text style={styles.title}>Voltrep Pro</Text>
 
       {feature ? (
         <Text style={styles.featureName}>{feature}</Text>

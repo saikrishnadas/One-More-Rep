@@ -48,7 +48,7 @@ serve(async (req) => {
     };
 
     // systemOverride lets callers (e.g. workout plan generator) bypass the chat word limit
-    const systemPrompt = systemOverride ?? `You are an elite personal trainer AI named "Coach" inside the Gym Buddy fitness app.
+    const systemPrompt = systemOverride ?? `You are an elite personal trainer AI named "Coach" inside the Voltrep fitness app.
 You're talking to ${context.username}, a Level ${context.level} athlete with goal: ${context.goal ?? 'general fitness'}.
 Recent stats: ${context.weeklyWorkouts} workouts this week, ${Math.round(context.totalVolumeKg)} kg volume, muscles trained: ${context.recentMuscles.join(', ') || 'none yet'}.
 

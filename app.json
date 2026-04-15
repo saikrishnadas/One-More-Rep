@@ -1,14 +1,14 @@
 {
   "expo": {
-    "name": "Gym Buddy",
-    "slug": "gym-buddy",
+    "name": "Voltrep",
+    "slug": "voltrep",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "gymbuddy",
+    "scheme": "voltrep",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
-    "description": "Your AI-powered fitness companion — workouts, nutrition, habits & social",
+    "description": "Your AI-powered lifting OS — workouts, nutrition, watch data & smart training",
     "privacy": "public",
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -17,18 +17,18 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.gymbuddy.app",
+      "bundleIdentifier": "com.voltrep.app",
       "buildNumber": "1",
       "entitlements": {
         "com.apple.developer.healthkit": true,
         "com.apple.developer.healthkit.background-delivery": true
       },
       "infoPlist": {
-        "NSHealthShareUsageDescription": "Gym Buddy reads your heart rate, sleep, HRV, and steps to give you recovery insights and live HR during workouts.",
-        "NSHealthUpdateUsageDescription": "Gym Buddy writes workout data to Apple Health so your Exercise ring closes automatically.",
-        "NSMotionUsageDescription": "Gym Buddy uses motion data to count your steps.",
-        "NSCameraUsageDescription": "Gym Buddy uses the camera to scan food barcodes.",
-        "NSSpeechRecognitionUsageDescription": "Gym Buddy may use speech recognition for voice logging."
+        "NSHealthShareUsageDescription": "Voltrep reads your heart rate, sleep, HRV, and steps to give you recovery insights and live HR during workouts.",
+        "NSHealthUpdateUsageDescription": "Voltrep writes workout data to Apple Health so your Exercise ring closes automatically.",
+        "NSMotionUsageDescription": "Voltrep uses motion data to count your steps.",
+        "NSCameraUsageDescription": "Voltrep uses the camera to scan food barcodes.",
+        "NSSpeechRecognitionUsageDescription": "Voltrep may use speech recognition for voice logging."
       }
     },
     "android": {
@@ -36,7 +36,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0d0d0d"
       },
-      "package": "com.gymbuddy.app",
+      "package": "com.voltrep.app",
       "minSdkVersion": 26,
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -69,7 +69,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow Gym Buddy to scan barcodes."
+          "cameraPermission": "Allow Voltrep to scan barcodes."
         }
       ],
       [

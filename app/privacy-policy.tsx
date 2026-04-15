@@ -47,7 +47,7 @@ We use Open Food Facts (open database) for food search.`,
   },
   {
     title: '5. Health & Sensor Data',
-    body: `Gym Buddy may request access to:
+    body: `Voltrep may request access to:
 • Motion/accelerometer data: to count steps
 • Camera: to scan food barcodes
 
@@ -71,11 +71,11 @@ We do not make your profile public without your consent.`,
 • Export your data
 • Opt out of AI features
 
-To exercise these rights, contact us at privacy@gymbuddy.app`,
+To exercise these rights, contact us at privacy@voltrep.app`,
   },
   {
     title: '8. Children\'s Privacy',
-    body: `Gym Buddy is not intended for users under 13 years of age. We do not knowingly collect personal information from children under 13.`,
+    body: `Voltrep is not intended for users under 13 years of age. We do not knowingly collect personal information from children under 13.`,
   },
   {
     title: '9. Changes to This Policy',
@@ -84,8 +84,8 @@ To exercise these rights, contact us at privacy@gymbuddy.app`,
   {
     title: '10. Contact Us',
     body: `For privacy inquiries:
-Email: privacy@gymbuddy.app
-Website: gymbuddy.app/privacy
+Email: privacy@voltrep.app
+Website: voltrep.app/privacy
 
 Last updated: April 2026`,
   },
@@ -103,11 +103,11 @@ export default function PrivacyPolicyScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <Text variant="heading" style={styles.mainTitle}>Gym Buddy Privacy Policy</Text>
+        <Text variant="heading" style={styles.mainTitle}>Voltrep Privacy Policy</Text>
         <Text variant="caption" style={styles.date}>Effective: April 2026</Text>
 
         <Text variant="body" style={styles.intro}>
-          Your privacy matters to us. This policy explains what data Gym Buddy collects, how we use it, and your rights.
+          Your privacy matters to us. This policy explains what data Voltrep collects, how we use it, and your rights.
         </Text>
 
         {SECTIONS.map((section, i) => (

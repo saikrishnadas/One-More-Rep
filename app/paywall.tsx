@@ -76,7 +76,7 @@ export default function PaywallScreen() {
         <Text style={styles.crownEmoji}>👑</Text>
 
         {/* Title */}
-        <Text variant="display" style={styles.title}>Unlock Gym Buddy PRO</Text>
+        <Text variant="display" style={styles.title}>Unlock Voltrep PRO</Text>
 
         {/* Subtitle */}
         <Text style={styles.subtitle}>Train smarter with your watch data</Text>
