@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/Button';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/lib/constants';
 import { sendChatMessage } from '@/lib/ai-trainer';
 import { getMuscleRecovery } from '@/lib/muscle-recovery';
-import { MUSCLE_GROUPS, generateWorkoutPlan, WorkoutPlan, MuscleGroupKey } from '@/lib/coach-planner';
+import { MUSCLE_GROUPS, generateWorkoutPlan, getRecommendedVolume, WorkoutPlan, MuscleGroupKey } from '@/lib/coach-planner';
 import type { ChatMessage } from '@/lib/ai-trainer';
 import { ChevronLeft, Zap, MessageCircle, Dumbbell, CheckCircle } from 'lucide-react-native';
 
@@ -42,11 +42,15 @@ function PlanTab() {
   const [addedToWorkout, setAddedToWorkout] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const recommended = getRecommendedVolume(profile?.goal ?? null);
+  const [exerciseCount, setExerciseCount] = useState(recommended.exerciseCount);
+  const [setsPerExercise, setSetsPerExercise] = useState(recommended.sets);
+
   useEffect(() => {
     if (user) getMuscleRecovery(user.id, profile?.goal).then(setRecoveryMap as any).catch(() => {});
   }, [user]);
 
-  // Auto-generate plan after 800ms when muscle selection changes
+  // Auto-generate plan after 800ms when selection changes
   useEffect(() => {
     if (selectedMuscles.size === 0 || !user) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -54,7 +58,7 @@ function PlanTab() {
       generatePlan(Array.from(selectedMuscles), Array.from(selectedSections));
     }, 800);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [selectedMuscles, selectedSections]);
+  }, [selectedMuscles, selectedSections, exerciseCount, setsPerExercise]);
 
   async function generatePlan(muscles: string[], sections: string[]) {
     if (muscles.length === 0 || !user) return;
@@ -68,7 +72,9 @@ function PlanTab() {
         sections,
         onboarding?.fitnessLevel ?? 'intermediate',
         profile?.goal ?? null,
-        recoveryMap
+        recoveryMap,
+        exerciseCount,
+        setsPerExercise
       );
       setPlan(result);
     } catch {
@@ -177,6 +183,48 @@ function PlanTab() {
             ))}
           </View>
         </>
+      )}
+
+      {selectedMuscles.size > 0 && (
+        <View style={styles.volumeSection}>
+          <Text variant="label" style={styles.stepLabel}>Workout volume</Text>
+
+          <View style={styles.volumeRow}>
+            <Text style={styles.volumeLabel}>Exercises</Text>
+            <View style={styles.chipRow}>
+              {[3, 4, 5, 6].map(n => (
+                <TouchableOpacity
+                  key={n}
+                  style={[styles.volumeChip, exerciseCount === n && styles.volumeChipSelected]}
+                  onPress={() => { setExerciseCount(n); setPlan(null); setAddedToWorkout(false); }}
+                >
+                  <Text style={[styles.volumeChipText, exerciseCount === n && { color: Colors.primary }]}>
+                    {n}{n === recommended.exerciseCount ? '*' : ''}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.volumeRow}>
+            <Text style={styles.volumeLabel}>Sets each</Text>
+            <View style={styles.chipRow}>
+              {[2, 3, 4, 5].map(n => (
+                <TouchableOpacity
+                  key={n}
+                  style={[styles.volumeChip, setsPerExercise === n && styles.volumeChipSelected]}
+                  onPress={() => { setSetsPerExercise(n); setPlan(null); setAddedToWorkout(false); }}
+                >
+                  <Text style={[styles.volumeChipText, setsPerExercise === n && { color: Colors.primary }]}>
+                    {n}{n === recommended.sets ? '*' : ''}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <Text variant="caption" color={Colors.textMuted}>* Recommended for {profile?.goal?.replace('_', ' ') ?? 'your goal'}</Text>
+        </View>
       )}
 
       {loading && (
@@ -375,6 +423,13 @@ const styles = StyleSheet.create({
   sectionChip: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.bgCardBorder, backgroundColor: Colors.bgCard },
   sectionChipSelected: { borderColor: Colors.primary, backgroundColor: Colors.bgHighlight },
   sectionChipText: { fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: Colors.textSecondary },
+  volumeSection: { gap: Spacing.sm },
+  volumeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  volumeLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: Colors.textSecondary },
+  chipRow: { flexDirection: 'row', gap: Spacing.sm },
+  volumeChip: { width: 40, height: 36, borderRadius: Radius.md, borderWidth: 1.5, borderColor: Colors.bgCardBorder, backgroundColor: Colors.bgCard, alignItems: 'center', justifyContent: 'center' },
+  volumeChipSelected: { borderColor: Colors.primary, backgroundColor: Colors.bgHighlight },
+  volumeChipText: { fontSize: FontSize.sm, fontWeight: FontWeight.heavy, color: Colors.textSecondary },
   center: { alignItems: 'center', paddingVertical: Spacing.xl },
   planResult: { gap: Spacing.md },
   exerciseCard: { gap: Spacing.xs },

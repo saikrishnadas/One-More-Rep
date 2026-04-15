@@ -25,7 +25,7 @@ const STORAGE_KEY_IS_PRO = 'isPro';
 const STORAGE_KEY_TRIAL_USED = 'trialUsed';
 
 export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
-  isPro: __DEV__ ? true : false,
+  isPro: true, // TODO: revert before production release — force Pro for testing
   trialUsed: false,
   isLoading: false,
   packages: [],

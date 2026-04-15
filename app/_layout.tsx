@@ -25,10 +25,10 @@ export default function RootLayout() {
     // Initialize RevenueCat then hydrate subscription state
     initRevenueCat().then(() => {
       useSubscriptionStore.getState().checkSubscription();
-    });
+    }).catch(console.warn);
 
     // Initialize local DB and seed exercises
-    initDatabase().then(() => seedExercises());
+    initDatabase().then(() => seedExercises()).catch(console.error);
     registerForPushNotifications().catch(console.warn);
 
     // Listen for auth changes
@@ -38,7 +38,7 @@ export default function RootLayout() {
         fetchProfile();
         loginRevenueCat(session.user.id);
       }
-    });
+    }).catch(console.warn);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);

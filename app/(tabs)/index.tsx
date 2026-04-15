@@ -220,19 +220,9 @@ export default function HomeScreen() {
               </View>
               <Text style={styles.chatLink}>Chat →</Text>
             </View>
-            {aiLoading ? (
-              <ActivityIndicator
-                color={Colors.primary}
-                style={{ marginTop: Spacing.sm }}
-              />
-            ) : (
-              <Text variant="body" style={{ marginTop: Spacing.sm }}>
-                {aiSuggestion ??
-                  (weeklyWorkouts === 0
-                    ? "Complete your first workout to get personalized coaching!"
-                    : "Tap to get personlized workout plan from you coach!")}
-              </Text>
-            )}
+            <Text variant="body" style={{ marginTop: Spacing.sm }}>
+              Get customized workouts →
+            </Text>
           </Card>
         </TouchableOpacity>
 

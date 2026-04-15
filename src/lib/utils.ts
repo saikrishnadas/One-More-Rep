@@ -21,7 +21,7 @@ export function formatVolume(kg: number): string {
 
 /** XP required to reach a given level */
 export function xpForLevel(level: number): number {
-  return Math.round(100 * Math.pow(level, 1.5));
+  return Math.round(200 * Math.pow(level, 1.8));
 }
 
 /** Level from total XP */
@@ -33,7 +33,7 @@ export function levelFromXp(totalXp: number): number {
 
 /** XP earned for a completed workout */
 export function calculateWorkoutXp(totalVolumeKg: number, prCount: number): number {
-  return 50 + Math.floor(totalVolumeKg / 1000) * 10 + prCount * 100;
+  return 20 + Math.floor(totalVolumeKg / 1000) * 5 + prCount * 40;
 }
 
 export const LEVEL_TITLES: Record<string, string> = {

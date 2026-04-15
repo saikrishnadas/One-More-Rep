@@ -83,6 +83,17 @@ function prescribeVolume(goal: string | null): { sets: number; reps: string } {
   }
 }
 
+/** Recommended exercise count + sets based on goal */
+export function getRecommendedVolume(goal: string | null): { exerciseCount: number; sets: number; reps: string } {
+  switch (goal) {
+    case 'strength':     return { exerciseCount: 4, sets: 5, reps: '3-5' };
+    case 'muscle_gain':  return { exerciseCount: 5, sets: 4, reps: '8-12' };
+    case 'weight_loss':  return { exerciseCount: 6, sets: 3, reps: '12-15' };
+    case 'endurance':    return { exerciseCount: 6, sets: 3, reps: '15-20' };
+    default:             return { exerciseCount: 4, sets: 4, reps: '8-10' };
+  }
+}
+
 /** Apply RPE-based weight multiplier */
 function applyRpeAdjustment(weightKg: number, rpe: number | null): number {
   if (rpe === null) return weightKg;
@@ -99,11 +110,14 @@ function buildFallbackPlan(
   fitnessLevel: string,
   goal: string | null,
   lastRpe: number | null,
+  exerciseCount?: number,
+  setsOverride?: number,
 ): WorkoutPlan {
   // Shuffle deterministically by name length to get variety
   const shuffled = [...relevant].sort((a, b) => (a.name.length % 7) - (b.name.length % 7));
 
-  // Pick up to 5 exercises, ensuring we cover all selected muscle groups first
+  const maxExercises = exerciseCount ?? 5;
+  // Pick up to maxExercises, ensuring we cover all selected muscle groups first
   const picked: typeof relevant = [];
   const usedMuscles = new Set<string>();
 
@@ -115,11 +129,12 @@ function buildFallbackPlan(
 
   // Second pass: fill remaining slots with any relevant exercise not yet picked
   for (const ex of shuffled) {
-    if (picked.length >= 5) break;
+    if (picked.length >= maxExercises) break;
     if (!picked.includes(ex)) picked.push(ex);
   }
 
-  const { sets, reps } = prescribeVolume(goal);
+  const { sets: defaultSets, reps } = prescribeVolume(goal);
+  const sets = setsOverride ?? defaultSets;
   const rpeNote = lastRpe !== null
     ? lastRpe >= 8 ? '(weights reduced — recovery day)' : lastRpe <= 4 ? '(weights increased — push harder!)' : ''
     : '';
@@ -169,7 +184,9 @@ export async function generateWorkoutPlan(
   focusSections: string[],
   fitnessLevel: string,
   goal: string | null,
-  recoveryMap: Record<string, { status: string }>
+  recoveryMap: Record<string, { status: string }>,
+  exerciseCount?: number,
+  setsPerExercise?: number,
 ): Promise<WorkoutPlan> {
   const { rpe: lastRpe, sessionDate } = await getLastSessionRpe(userId);
   const allExercises = await db.select().from(exercises);
@@ -230,12 +247,14 @@ export async function generateWorkoutPlan(
       }`
     : ''
 
+  const exCount = exerciseCount ?? 4;
+  const setsHint = setsPerExercise ? `Each exercise should have ${setsPerExercise} sets.` : '';
   const prompt = `Design a ${muscleGroups.join('+')} workout for a ${fitnessLevel} (goal: ${goal ?? 'general fitness'}).${rpeContext ? ` ${rpeContext}` : ''}
 Exercises: ${exerciseList || 'standard gym equipment'}
 
 Reply with ONLY this JSON (no markdown, no extra text):
 {"title":"X","note":"1 tip","ex":[{"n":"name","s":4,"r":"8-10","w":60}]}
-Pick exactly 4 exercises. w = ~85% of PR kg if known, else beginner/intermediate/advanced default.${readinessContext}`;
+Pick exactly ${exCount} exercises. ${setsHint} w = ~85% of PR kg if known, else beginner/intermediate/advanced default.${readinessContext}`;
 
   // Try AI plan — fall back to local plan if AI fails or returns no exercises
   let parsed: any = null;
@@ -296,5 +315,5 @@ Pick exactly 4 exercises. w = ~85% of PR kg if known, else beginner/intermediate
   }
 
   // Local fallback — always works even offline
-  return buildFallbackPlan(relevant, prMap, muscleGroups, focusSections, fitnessLevel, goal, lastRpe);
+  return buildFallbackPlan(relevant, prMap, muscleGroups, focusSections, fitnessLevel, goal, lastRpe, exerciseCount, setsPerExercise);
 }

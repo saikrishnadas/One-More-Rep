@@ -134,7 +134,7 @@ export function calcHabitStreak(
 }
 
 export function calculateHabitXp(completedCount: number): number {
-  return completedCount * 10;
+  return completedCount * 5;
 }
 
-export const MEAL_LOG_XP = 5;
+export const MEAL_LOG_XP = 2;
