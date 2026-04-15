@@ -30,6 +30,8 @@ import { MuscleStatusCard } from "@/components/home/MuscleStatusCard";
 import { WaterCard } from "@/components/home/WaterCard";
 import { ReadinessCard } from "@/components/home/ReadinessCard";
 import { TrainingWindowCard } from "@/components/home/TrainingWindowCard";
+import { TrainingLoadCard } from "@/components/home/TrainingLoadCard";
+import { HRVInsightCard } from "@/components/home/HRVInsightCard";
 import { useWaterStore } from "@/stores/water";
 import { useHealthPlatformStore } from "@/stores/healthPlatform";
 import { Flame, Footprints, Zap } from "lucide-react-native";
@@ -236,7 +238,9 @@ export default function HomeScreen() {
 
         <MuscleStatusCard userId={user?.id ?? ""} goal={profile?.goal} />
 
+        <TrainingLoadCard userId={user?.id ?? ''} />
         <ReadinessCard />
+        <HRVInsightCard />
         <TrainingWindowCard userId={user?.id ?? ''} />
 
         <Button

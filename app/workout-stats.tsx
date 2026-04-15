@@ -16,6 +16,7 @@ import { OneRMChart, OneRMDataPoint } from '@/components/stats/OneRMChart';
 import { IntensityChart } from '@/components/stats/IntensityChart';
 import { TrainingWindowChart } from '@/components/stats/TrainingWindowChart';
 import { SleepPerformanceChart } from '@/components/stats/SleepPerformanceChart';
+import { HRVTrendChart } from '@/components/stats/HRVTrendChart';
 import { TrainingLoadCard } from '@/components/home/TrainingLoadCard';
 import type { PRRecord } from '@/components/stats/PRList';
 import { ChevronLeft } from 'lucide-react-native';
@@ -262,6 +263,23 @@ export default function WorkoutStatsScreen() {
               </Text>
               <Text style={{ color: Colors.textMuted, fontSize: FontSize.sm, marginTop: Spacing.xs }}>
                 PRO: See how sleep affects your strength
+              </Text>
+            </TouchableOpacity>
+          )}
+        </Card>
+
+        {/* HRV 30-Day Trend */}
+        <Card style={{ marginTop: Spacing.md, padding: Spacing.md }}>
+          <Text variant="title" style={{ marginBottom: Spacing.sm }}>HRV Trend (30 Days)</Text>
+          {isPro ? (
+            <HRVTrendChart userId={user?.id ?? ''} />
+          ) : (
+            <TouchableOpacity onPress={() => router.push('/paywall' as any)} activeOpacity={0.7}>
+              <Text style={{ color: Colors.textMuted, fontSize: FontSize.md }}>
+                HRV Trend 🔒
+              </Text>
+              <Text style={{ color: Colors.textMuted, fontSize: FontSize.sm, marginTop: Spacing.xs }}>
+                PRO: 30-day HRV analysis with training recommendations
               </Text>
             </TouchableOpacity>
           )}
