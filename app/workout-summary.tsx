@@ -275,7 +275,7 @@ export default function WorkoutSummaryScreen() {
             <Text style={[styles.intensityLabel, { color: intensityResult.color }]}>{intensityResult.label}</Text>
           </Card>
         ) : (
-          <TouchableOpacity onPress={() => router.push('/paywall')} activeOpacity={0.8}>
+          <TouchableOpacity onPress={() => router.push('/paywall' as any)} activeOpacity={0.8}>
             <Card style={styles.intensityCard}>
               <Text variant="label" style={{ marginBottom: Spacing.xs }}>Intensity Score 🔒</Text>
               <Text variant="caption" style={{ color: Colors.textMuted, textAlign: 'center' }}>

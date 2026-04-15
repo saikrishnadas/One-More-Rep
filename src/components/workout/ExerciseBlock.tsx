@@ -114,7 +114,7 @@ export function ExerciseBlock({
       {suggestion && !isPro && readinessScore !== null && (
         <TouchableOpacity
           style={styles.proHint}
-          onPress={() => router.push('/paywall')}
+          onPress={() => router.push('/paywall' as any)}
           activeOpacity={0.7}
         >
           <Text style={styles.proHintText}>

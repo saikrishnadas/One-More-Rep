@@ -234,7 +234,7 @@ export default function WorkoutStatsScreen() {
           {isPro ? (
             <TrainingWindowChart userId={user?.id ?? ''} />
           ) : (
-            <TouchableOpacity onPress={() => router.push('/paywall')} activeOpacity={0.7}>
+            <TouchableOpacity onPress={() => router.push('/paywall' as any)} activeOpacity={0.7}>
               <Text style={{ color: Colors.textMuted, fontSize: FontSize.md }}>
                 Best Training Window 🔒
               </Text>

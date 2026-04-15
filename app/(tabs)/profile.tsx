@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Alert, Platform } from 'react-native';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Alert, Platform, AppState } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/stores/auth';
@@ -28,12 +28,27 @@ export default function ProfileScreen() {
   const { user, profile, signOut } = useAuthStore();
   const { habits, logs, loadHabits, loadLogs, createHabit, deleteHabit, toggleHabit } = useHabitStore();
   const { earnedBadges, pendingLevelUp, pendingBadges, loadBadges, setPendingLevelUp, clearPendingBadge } = useGamificationStore();
-  const { connected, hasPermission, requestPermission, disconnect } = useHealthPlatformStore();
+  const { connected, hasPermission, pendingPermission, disconnect, requestPermission, recheckPermissions } = useHealthPlatformStore();
   const { isPro } = useSubscriptionStore();
   const userAge = 30;
   const [showCreate, setShowCreate] = useState(false);
+  const appState = useRef(AppState.currentState);
 
   const today = formatDate(new Date());
+
+  // Re-check Health Connect permissions when app returns from background
+  // (user may have granted permissions in Health Connect settings)
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextAppState) => {
+      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+        if (pendingPermission) {
+          recheckPermissions();
+        }
+      }
+      appState.current = nextAppState;
+    });
+    return () => sub.remove();
+  }, [pendingPermission, recheckPermissions]);
 
   useEffect(() => {
     if (!user) return;
@@ -152,42 +167,40 @@ export default function ProfileScreen() {
         {/* Health Platform Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Health & Fitness Watch</Text>
-          <ProGate feature="Watch & Health Integration" compact>
-            <TouchableOpacity
-              style={[styles.linkCard, connected && styles.linkCardConnected]}
-              onPress={() => !connected ? requestPermission(userAge) : undefined}
-              activeOpacity={connected ? 1 : 0.7}
-            >
-              <View style={styles.linkCardLeft}>
-                <View style={styles.linkIconContainer}>
-                  <Heart size={18} color={Colors.primary} />
-                </View>
-                <View>
-                  <Text style={styles.linkCardTitle}>
-                    {Platform.OS === 'ios' ? 'Apple Health' : 'Google Health'}
-                  </Text>
-                  <Text style={styles.linkCardSubtitle}>
-                    {connected
-                      ? 'Workouts, live HR & recovery insights'
-                      : 'Connect to unlock watch features'
-                    }
-                  </Text>
-                </View>
+          <TouchableOpacity
+            style={[styles.linkCard, connected && styles.linkCardConnected]}
+            onPress={() => !connected ? requestPermission(userAge) : undefined}
+            activeOpacity={connected ? 1 : 0.7}
+          >
+            <View style={styles.linkCardLeft}>
+              <View style={styles.linkIconContainer}>
+                <Heart size={18} color={Colors.primary} />
               </View>
-              <View style={styles.healthStatus}>
-                {connected ? (
-                  <>
-                    <Text style={styles.connectedText}>✓ Connected</Text>
-                    <TouchableOpacity onPress={disconnect} style={styles.disconnectBtn}>
-                      <Text style={styles.disconnectText}>Disconnect</Text>
-                    </TouchableOpacity>
-                  </>
-                ) : (
-                  <Text style={styles.connectText}>Connect →</Text>
-                )}
+              <View>
+                <Text style={styles.linkCardTitle}>
+                  {Platform.OS === 'ios' ? 'Apple Health' : 'Google Health'}
+                </Text>
+                <Text style={styles.linkCardSubtitle}>
+                  {connected
+                    ? 'Workouts, live HR & recovery insights'
+                    : 'Connect to unlock watch features'
+                  }
+                </Text>
               </View>
-            </TouchableOpacity>
-          </ProGate>
+            </View>
+            <View style={styles.healthStatus}>
+              {connected ? (
+                <>
+                  <Text style={styles.connectedText}>✓ Connected</Text>
+                  <TouchableOpacity onPress={disconnect} style={styles.disconnectBtn}>
+                    <Text style={styles.disconnectText}>Disconnect</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <Text style={styles.connectText}>Connect →</Text>
+              )}
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* Habits section */}

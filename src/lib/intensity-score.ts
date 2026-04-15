@@ -34,12 +34,12 @@ export function calculateIntensityScore(input: IntensityInput): IntensityResult 
   const volumeDensity = totalVolumeKg / durationMin;
   let score: number;
 
-  if (hrData && userAge && hrData.averageHR > 0) {
+  if (hrData && userAge && hrData.averageHR != null && hrData.averageHR > 0) {
     // WITH HR data — volume (40) + HR effort (30) + zone time (30)
     const volumeScore = clamp((volumeDensity / MAX_EXPECTED_DENSITY) * 40, 0, 40);
 
     const maxHR = 220 - userAge;
-    const avgHrPct = hrData.averageHR / maxHR;
+    const avgHrPct = hrData.averageHR! / maxHR;
     const hrScore = clamp(avgHrPct * 100 - 30, 0, 30);
 
     const z4z5Minutes = (hrData.zones.z4?.minutes ?? 0) + (hrData.zones.z5?.minutes ?? 0);

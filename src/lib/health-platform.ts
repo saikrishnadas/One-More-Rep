@@ -33,6 +33,8 @@ try {
 let HealthConnect: {
   initialize: () => Promise<boolean>;
   requestPermission: (perms: any[]) => Promise<any>;
+  getGrantedPermissions: () => Promise<any>;
+  openHealthConnectSettings: () => void;
   readRecords: (type: string, opts: any) => Promise<any>;
   insertRecords: (records: any[]) => Promise<any>;
 } | null = null;
@@ -43,6 +45,8 @@ try {
   HealthConnect = {
     initialize: rnHC.initialize,
     requestPermission: rnHC.requestPermission,
+    getGrantedPermissions: rnHC.getGrantedPermissions,
+    openHealthConnectSettings: rnHC.openHealthConnectSettings,
     readRecords: rnHC.readRecords,
     insertRecords: rnHC.insertRecords,
   };
@@ -219,16 +223,15 @@ function androidAvailable(): boolean {
   return Platform.OS === 'android' && HealthConnect !== null;
 }
 
-const ANDROID_PERMISSIONS = [
+export const ANDROID_PERMISSIONS = [
   { accessType: 'read', recordType: 'Steps' },
   { accessType: 'read', recordType: 'HeartRate' },
   { accessType: 'read', recordType: 'SleepSession' },
-  { accessType: 'read', recordType: 'HeartRateVariability' },
+  { accessType: 'read', recordType: 'HeartRateVariabilityRmssd' },
   { accessType: 'read', recordType: 'RestingHeartRate' },
   { accessType: 'read', recordType: 'ExerciseSession' },
-  { accessType: 'read', recordType: 'ActiveCaloriesBurned' },
   { accessType: 'write', recordType: 'ExerciseSession' },
-  { accessType: 'write', recordType: 'ActiveCaloriesBurned' },
+  { accessType: 'write', recordType: 'TotalCaloriesBurned' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -253,8 +256,9 @@ export function isHealthPlatformAvailable(): boolean {
 /**
  * Request all required health permissions.
  * Returns true if permissions were granted (or already available).
+ * Returns 'pending' if the user was sent to Health Connect settings (Android fallback).
  */
-export async function requestHealthPermissions(): Promise<boolean> {
+export async function requestHealthPermissions(): Promise<boolean | 'pending'> {
   try {
     if (iosInitialized()) {
       await iosInit();
@@ -264,11 +268,50 @@ export async function requestHealthPermissions(): Promise<boolean> {
     if (androidAvailable()) {
       const initialized = await HealthConnect!.initialize();
       if (!initialized) return false;
-      await HealthConnect!.requestPermission(ANDROID_PERMISSIONS);
-      return true;
+
+      // Check if permissions are already granted
+      const alreadyGranted = await checkAndroidPermissionsGranted();
+      if (alreadyGranted) return true;
+
+      // Try the native requestPermission dialog first
+      try {
+        await HealthConnect!.requestPermission(ANDROID_PERMISSIONS);
+        return true;
+      } catch {
+        // requestPermission crashes if ActivityResultLauncher was not registered
+        // (known issue with react-native-health-connect v3 + Expo).
+        // Fall back to opening Health Connect settings manually.
+        HealthConnect!.openHealthConnectSettings();
+        return 'pending';
+      }
     }
 
     return false;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Check if required Android Health Connect permissions are already granted.
+ */
+export async function checkAndroidPermissionsGranted(): Promise<boolean> {
+  try {
+    if (!androidAvailable()) return false;
+    const initialized = await HealthConnect!.initialize();
+    if (!initialized) return false;
+    const granted = await HealthConnect!.getGrantedPermissions();
+    // granted is an array of { accessType, recordType } objects
+    const grantedSet = new Set(
+      (granted ?? []).map((p: any) => `${p.accessType}:${p.recordType}`)
+    );
+    // Check at least the core read permissions are granted
+    const corePermissions = [
+      'read:Steps',
+      'read:HeartRate',
+      'read:SleepSession',
+    ];
+    return corePermissions.some((p) => grantedSet.has(p));
   } catch {
     return false;
   }
@@ -530,7 +573,7 @@ export async function readHRV(days: number): Promise<HRVData> {
     }
 
     if (androidAvailable()) {
-      const result = await HealthConnect!.readRecords('HeartRateVariability', {
+      const result = await HealthConnect!.readRecords('HeartRateVariabilityRmssd', {
         timeRangeFilter: {
           operator: 'between',
           startTime: startDt.toISOString(),
@@ -682,7 +725,7 @@ export async function writeWorkout(data: WorkoutData): Promise<void> {
 
       if (data.calories !== undefined) {
         records.push({
-          recordType: 'ActiveCaloriesBurned',
+          recordType: 'TotalCaloriesBurned',
           startTime: data.startDate.toISOString(),
           endTime: data.endDate.toISOString(),
           energy: {

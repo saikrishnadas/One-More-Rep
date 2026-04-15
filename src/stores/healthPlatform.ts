@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   isHealthPlatformAvailable,
   requestHealthPermissions,
+  checkAndroidPermissionsGranted,
   writeWorkout,
   subscribeHeartRate,
   getReadinessData,
@@ -28,7 +29,9 @@ interface HealthPlatformState {
   readinessData: ReadinessData | null;
   isLoadingReadiness: boolean;
 
+  pendingPermission: boolean;
   requestPermission: (userAge: number) => Promise<void>;
+  recheckPermissions: () => Promise<void>;
   startHeartRateMonitoring: (userAge: number) => void;
   stopHeartRateMonitoring: () => void;
   fetchReadiness: (userAge: number) => Promise<void>;
@@ -49,14 +52,26 @@ export const useHealthPlatformStore = create<HealthPlatformState>()(
       readinessData: null,
       isLoadingReadiness: false,
 
+      pendingPermission: false,
+
       requestPermission: async (_userAge: number) => {
         if (!isHealthPlatformAvailable()) return;
 
-        const granted = await requestHealthPermissions();
-        if (granted) {
-          set({ connected: true, hasPermission: true });
+        const result = await requestHealthPermissions();
+        if (result === true) {
+          set({ connected: true, hasPermission: true, pendingPermission: false });
+        } else if (result === 'pending') {
+          // User was sent to Health Connect settings — will re-check on app resume
+          set({ pendingPermission: true });
         } else {
           set({ hasPermission: false });
+        }
+      },
+
+      recheckPermissions: async () => {
+        const granted = await checkAndroidPermissionsGranted();
+        if (granted) {
+          set({ connected: true, hasPermission: true, pendingPermission: false });
         }
       },
 

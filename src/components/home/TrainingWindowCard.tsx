@@ -53,7 +53,7 @@ export function TrainingWindowCard({ userId }: Props) {
 
   if (!isPro) {
     return (
-      <TouchableOpacity activeOpacity={0.85} onPress={() => router.push('/paywall')}>
+      <TouchableOpacity activeOpacity={0.85} onPress={() => router.push('/paywall' as any)}>
         <Card style={styles.card}>
           <Text style={styles.title}>🕐 Best Training Window 🔒</Text>
           <Text variant="caption" style={styles.mutedText}>

@@ -118,7 +118,7 @@ export function MuscleStatusCard({ userId, goal }: Props) {
       {!isPro && (
         <TouchableOpacity
           style={{ marginTop: 8, paddingVertical: 6, paddingHorizontal: 12 }}
-          onPress={() => router.push('/paywall')}
+          onPress={() => router.push('/paywall' as any)}
           activeOpacity={0.7}
         >
           <Text style={{ fontSize: 11, color: '#666666' }}>
