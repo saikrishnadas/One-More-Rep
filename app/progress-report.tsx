@@ -4,12 +4,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Svg, { Rect, Text as SvgText } from 'react-native-svg';
 import { useAuthStore } from '@/stores/auth';
+import { useSubscriptionStore } from '@/stores/subscription';
+import { useHealthPlatformStore } from '@/stores/healthPlatform';
 import { generateReport, PeriodReport } from '@/lib/report-generator';
 import { exportReportCSV } from '@/lib/export';
 import { Text } from '@/components/ui/Text';
 import { Card } from '@/components/ui/Card';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/lib/constants';
-import { ChevronLeft, TrendingUp, Dumbbell, Flame, Target, Utensils, Share2 } from 'lucide-react-native';
+import { ChevronLeft, TrendingUp, Dumbbell, Flame, Target, Utensils, Share2, Heart, Moon, Activity, Footprints } from 'lucide-react-native';
 
 function MiniBarChart({ data }: { data: { label: string; volume: number }[] }) {
   const max = Math.max(...data.map(d => d.volume), 1);
@@ -36,6 +38,8 @@ function MiniBarChart({ data }: { data: { label: string; volume: number }[] }) {
 
 export default function ProgressReportScreen() {
   const { user } = useAuthStore();
+  const { isPro } = useSubscriptionStore();
+  const { connected } = useHealthPlatformStore();
   const [report, setReport] = useState<PeriodReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
@@ -105,6 +109,66 @@ export default function ProgressReportScreen() {
           <Card>
             <Text variant="title" style={styles.cardTitle}>Volume Trend (10 days)</Text>
             <MiniBarChart data={report.volumeTrend} />
+          </Card>
+
+          {/* Health & Recovery Section */}
+          <Card style={{ gap: Spacing.md }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
+              <Heart size={16} color={Colors.secondary} />
+              <Text variant="title">Health & Recovery</Text>
+            </View>
+
+            {isPro && connected ? (
+              <>
+                {/* Sleep + Readiness + Intensity row */}
+                <View style={styles.healthStatsRow}>
+                  {report.avgSleepHours != null && (
+                    <View style={styles.healthStat}>
+                      <Moon size={14} color="#818cf8" />
+                      <Text style={styles.healthStatValue}>{report.avgSleepHours}h</Text>
+                      <Text variant="caption">Avg Sleep</Text>
+                    </View>
+                  )}
+                  {report.avgIntensityScore != null && (
+                    <View style={styles.healthStat}>
+                      <Activity size={14} color={report.avgIntensityScore >= 70 ? '#ef4444' : report.avgIntensityScore >= 40 ? '#f59e0b' : '#22c55e'} />
+                      <Text style={styles.healthStatValue}>{report.avgIntensityScore}</Text>
+                      <Text variant="caption">Avg Intensity</Text>
+                    </View>
+                  )}
+                  {report.restingHrAvg != null && (
+                    <View style={styles.healthStat}>
+                      <Heart size={14} color={Colors.secondary} />
+                      <Text style={styles.healthStatValue}>
+                        {report.restingHrAvg} {report.restingHrChange != null ? (report.restingHrChange <= 0 ? '↓' : '↑') : ''}
+                      </Text>
+                      <Text variant="caption">Resting HR</Text>
+                    </View>
+                  )}
+                  {report.avgDailySteps != null && (
+                    <View style={styles.healthStat}>
+                      <Footprints size={14} color={Colors.success} />
+                      <Text style={styles.healthStatValue}>{(report.avgDailySteps / 1000).toFixed(1)}k</Text>
+                      <Text variant="caption">Avg Steps</Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Sleep trend mini chart */}
+                {report.sleepTrend.length > 0 && (
+                  <View>
+                    <Text variant="caption" style={{ marginBottom: Spacing.xs }}>Sleep (10 nights)</Text>
+                    <MiniBarChart data={report.sleepTrend.map(s => ({ label: s.label, volume: s.hours }))} />
+                  </View>
+                )}
+              </>
+            ) : (
+              <TouchableOpacity onPress={() => router.push('/paywall' as any)} activeOpacity={0.7}>
+                <Text style={{ color: Colors.textMuted, fontSize: FontSize.sm }}>
+                  🔒 PRO: Sleep trends, resting HR, intensity score & step data
+                </Text>
+              </TouchableOpacity>
+            )}
           </Card>
 
           <Card style={{ gap: Spacing.sm }}>
@@ -192,4 +256,20 @@ const styles = StyleSheet.create({
   },
   muscleChipText: { fontSize: FontSize.sm, color: Colors.primary, fontWeight: FontWeight.bold, textTransform: 'capitalize' },
   weightChange: { fontSize: FontSize.xxl, fontWeight: FontWeight.heavy },
+  healthStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+  },
+  healthStat: {
+    alignItems: 'center',
+    gap: 4,
+    minWidth: 70,
+  },
+  healthStatValue: {
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.heavy as any,
+    color: Colors.textPrimary,
+  },
 });
