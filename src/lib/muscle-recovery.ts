@@ -26,12 +26,55 @@ function getRecoveryWindow(goal?: string | null): number {
   }
 }
 
+export interface RecoveryContext {
+  readinessScore: number | null;
+  isPro: boolean;
+}
+
+/**
+ * Adjust recovery window based on health data (PRO feature).
+ * Full tier: readiness score → ±30% adjustment
+ * Partial tier: RPE + volume ratio → ±15% adjustment
+ */
+export function adjustRecoveryWindow(
+  baseHours: number,
+  readinessScore: number | null,
+  lastRpe: number | null,
+  volumeRatio: number | null,
+): number {
+  // Full tier: readiness-based
+  if (readinessScore !== null) {
+    const factor = 1.3 - 0.006 * readinessScore;
+    return Math.round(baseHours * factor);
+  }
+
+  // Partial tier: RPE + volume based
+  let rpeAdjust = 1.0;
+  if (lastRpe !== null) {
+    if (lastRpe >= 9) rpeAdjust = 1.15;
+    else if (lastRpe <= 6) rpeAdjust = 0.90;
+  }
+
+  let volumeAdjust = 1.0;
+  if (volumeRatio !== null) {
+    if (volumeRatio >= 1.2) volumeAdjust = 1.10;
+    else if (volumeRatio < 0.8) volumeAdjust = 0.95;
+  }
+
+  if (lastRpe !== null || volumeRatio !== null) {
+    return Math.round(baseHours * rpeAdjust * volumeAdjust);
+  }
+
+  return baseHours;
+}
+
 export async function getMuscleRecovery(
   userId: string,
   goal?: string | null,
+  context?: RecoveryContext,
 ): Promise<Record<string, MuscleRecovery>> {
   try {
-    const recoveryWindowHours = getRecoveryWindow(goal);
+    const baseWindowHours = getRecoveryWindow(goal);
 
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -49,12 +92,15 @@ export async function getMuscleRecovery(
 
     // muscle -> most recent completedAt (ms)
     const lastCompletedMs: Record<string, number> = {};
+    // muscle -> last RPE from most recent set
+    const lastRpeByMuscle: Record<string, number | null> = {};
 
     for (const session of recentSessions) {
       const sets = await db
         .select({
           exerciseId: workoutSets.exerciseId,
           completedAt: workoutSets.completedAt,
+          rpe: workoutSets.rpe,
         })
         .from(workoutSets)
         .where(eq(workoutSets.sessionId, session.id));
@@ -81,6 +127,8 @@ export async function getMuscleRecovery(
             : Number(s.completedAt);
           if (!lastCompletedMs[muscle] || ts > lastCompletedMs[muscle]) {
             lastCompletedMs[muscle] = ts;
+            // Track RPE from the most recent set for this muscle
+            lastRpeByMuscle[muscle] = s.rpe ?? null;
           }
         }
       }
@@ -105,6 +153,9 @@ export async function getMuscleRecovery(
       }
 
       const trainedHoursAgo = (now - lastMs) / (1000 * 60 * 60);
+      const recoveryWindowHours = context?.isPro
+        ? adjustRecoveryWindow(baseWindowHours, context.readinessScore, lastRpeByMuscle[muscle] ?? null, null)
+        : baseWindowHours;
       const recoveryPct = Math.min(
         100,
         Math.round((trainedHoursAgo / recoveryWindowHours) * 100),
@@ -133,6 +184,9 @@ export async function getMuscleRecovery(
 
       const lastMs = lastCompletedMs[muscle];
       const trainedHoursAgo = (now - lastMs) / (1000 * 60 * 60);
+      const recoveryWindowHours = context?.isPro
+        ? adjustRecoveryWindow(baseWindowHours, context.readinessScore, lastRpeByMuscle[muscle] ?? null, null)
+        : baseWindowHours;
       const recoveryPct = Math.min(
         100,
         Math.round((trainedHoursAgo / recoveryWindowHours) * 100),

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useFocusEffect } from "expo-router";
 import {
   View,
   ScrollView,
@@ -27,7 +28,12 @@ import { useNutritionStore } from "@/stores/nutrition";
 import { useOnboardingStore } from "@/stores/onboarding";
 import { MuscleStatusCard } from "@/components/home/MuscleStatusCard";
 import { WaterCard } from "@/components/home/WaterCard";
+import { ReadinessCard } from "@/components/home/ReadinessCard";
+import { TrainingWindowCard } from "@/components/home/TrainingWindowCard";
+import { TrainingLoadCard } from "@/components/home/TrainingLoadCard";
+import { HRVInsightCard } from "@/components/home/HRVInsightCard";
 import { useWaterStore } from "@/stores/water";
+import { useHealthPlatformStore } from "@/stores/healthPlatform";
 import { Flame, Footprints, Zap } from "lucide-react-native";
 
 export default function HomeScreen() {
@@ -43,6 +49,16 @@ export default function HomeScreen() {
   const [aiLoading, setAiLoading] = useState(false);
   const { goals: nutritionGoals } = useNutritionStore();
   const { data: onboardingData, load: loadOnboarding } = useOnboardingStore();
+  const { connected, fetchReadiness } = useHealthPlatformStore();
+  const userAge = (profile as any)?.age ?? 30;
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (connected) {
+        fetchReadiness(userAge);
+      }
+    }, [connected, userAge, fetchReadiness])
+  );
 
   useEffect(() => {
     if (!user) return;
@@ -221,6 +237,11 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
         <MuscleStatusCard userId={user?.id ?? ""} goal={profile?.goal} />
+
+        <TrainingLoadCard userId={user?.id ?? ''} />
+        <ReadinessCard />
+        <HRVInsightCard />
+        <TrainingWindowCard userId={user?.id ?? ''} />
 
         <Button
           label="START WORKOUT"

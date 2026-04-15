@@ -29,7 +29,7 @@ export const ShareCard = React.forwardRef<View, ShareCardProps>(
         <View style={styles.header}>
           <Text style={styles.flame}>🔥</Text>
           <View>
-            <Text style={styles.appName}>GYM BUDDY</Text>
+            <Text style={styles.appName}>VOLTREP</Text>
             <Text style={styles.username}>@{username}</Text>
           </View>
           {prCount > 0 && (
@@ -88,7 +88,7 @@ export const ShareCard = React.forwardRef<View, ShareCardProps>(
         )}
 
         {/* Footer */}
-        <Text style={styles.footer}>gymbuddy.app · Track. Train. Dominate.</Text>
+        <Text style={styles.footer}>voltrep.app · Track. Train. Dominate.</Text>
       </View>
     );
   }

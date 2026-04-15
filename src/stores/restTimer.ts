@@ -11,11 +11,19 @@ interface RestTimerState {
   intervalId: ReturnType<typeof setInterval> | null;
   notificationId: string | null;
 
+  // HR-based rest timer mode
+  hrMode: boolean;             // false = time-based, true = HR-based
+  currentHr: number | null;    // current heart rate during rest
+  recovered: boolean;          // true when HR drops below threshold
+  maxHrThreshold: number;      // 60% of maxHR = recovery threshold
+
   start: (duration: number, exerciseName: string) => void;
   skip: () => void;
   adjust: (delta: number) => void;
   tick: () => void;
   stop: () => void;
+  toggleHrMode: () => void;
+  setCurrentHr: (bpm: number | null, userAge?: number) => void;
 }
 
 export const useRestTimerStore = create<RestTimerState>((set, get) => ({
@@ -25,6 +33,12 @@ export const useRestTimerStore = create<RestTimerState>((set, get) => ({
   exerciseName: '',
   intervalId: null,
   notificationId: null,
+
+  // HR-based mode defaults
+  hrMode: false,
+  currentHr: null,
+  recovered: false,
+  maxHrThreshold: 0,
 
   start: (duration, exerciseName) => {
     // Clear any existing interval
@@ -93,5 +107,30 @@ export const useRestTimerStore = create<RestTimerState>((set, get) => ({
     const { remaining, duration } = get();
     const clamped = Math.min(Math.max(remaining + delta, 5), duration + 60);
     set({ remaining: clamped });
+  },
+
+  toggleHrMode: () => {
+    set((state) => ({ hrMode: !state.hrMode }));
+  },
+
+  setCurrentHr: (bpm, userAge) => {
+    if (bpm === null) {
+      set({ currentHr: null, recovered: false });
+      return;
+    }
+
+    const { hrMode } = get();
+    const maxHR = 220 - (userAge ?? 30);
+    const threshold = maxHR * 0.60;
+
+    if (hrMode) {
+      set({
+        currentHr: bpm,
+        maxHrThreshold: threshold,
+        recovered: bpm <= threshold,
+      });
+    } else {
+      set({ currentHr: bpm, maxHrThreshold: threshold });
+    }
   },
 }));

@@ -1,9 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, ScrollView, StyleSheet, TextInput, Alert, TouchableOpacity, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import ViewShot from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
+import { eq } from 'drizzle-orm';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Text } from '@/components/ui/Text';
@@ -12,10 +13,17 @@ import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/lib/constants';
 import { formatDuration, formatVolume } from '@/lib/utils';
 import { syncWorkoutSession } from '@/lib/workout-sync';
 import { estimateWorkoutCalories, estimateSweatLossMl } from '@/lib/calorie-burn';
+import { calculateIntensityScore } from '@/lib/intensity-score';
 import { useTemplatesStore } from '@/stores/templates';
 import { useWorkoutStore } from '@/stores/workout';
 import { useAuthStore } from '@/stores/auth';
 import { useNutritionStore } from '@/stores/nutrition';
+import { useSubscriptionStore } from '@/stores/subscription';
+import { db } from '@/db/client';
+import { workoutSessions } from '@/db/schema';
+import { getWorkoutHRData, getHRZoneInfo } from '../src/lib/health-platform';
+import { useHealthPlatformStore } from '@/stores/healthPlatform';
+import type { WorkoutHRData } from '../src/lib/health-platform';
 
 const RPE_LABELS: Record<number, string> = {
   1: 'Very Easy', 2: 'Easy', 3: 'Light', 4: 'Moderate',
@@ -109,13 +117,16 @@ export default function WorkoutSummaryScreen() {
 
   const { user, profile } = useAuthStore();
   const { saveTemplate } = useTemplatesStore();
-  const { exercises: workoutExercises } = useWorkoutStore();
+  const { exercises: workoutExercises, sessionRpe } = useWorkoutStore();
   const { setWorkoutBurn } = useNutritionStore();
+  const { isPro } = useSubscriptionStore();
+  const { connected, hasPermission } = useHealthPlatformStore();
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [templateName, setTemplateName] = useState(params.sessionName ?? 'My Workout');
   const [showTemplateSave, setShowTemplateSave] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [showRpe, setShowRpe] = useState(true);
+  const [hrData, setHrData] = useState<WorkoutHRData | null>(null);
   const shareCardRef = useRef<View>(null);
 
   async function handleShare() {
@@ -143,6 +154,15 @@ export default function WorkoutSummaryScreen() {
   const caloriesBurned = estimateWorkoutCalories(duration, volume, profile?.bodyweightKg ?? 70);
   const { lostMl, drinkMl } = estimateSweatLossMl(duration, volume);
 
+  const intensityResult = useMemo(() => calculateIntensityScore({
+    totalVolumeKg: volume,
+    durationSeconds: duration,
+    setCount: sets,
+    avgRpe: sessionRpe,
+    hrData,
+    userAge: 30,
+  }), [volume, duration, sets, sessionRpe, hrData]);
+
   // Sync to Supabase in background
   useEffect(() => {
     if (params.sessionId) {
@@ -150,6 +170,27 @@ export default function WorkoutSummaryScreen() {
     }
     setWorkoutBurn(caloriesBurned);
   }, []);
+
+  // Fetch HR zone data for this workout
+  useEffect(() => {
+    if (connected && hasPermission && duration > 0) {
+      const endTime = new Date();
+      const startTime = new Date(endTime.getTime() - duration * 1000);
+      getWorkoutHRData(startTime, endTime)
+        .then(setHrData)
+        .catch(() => {});
+    }
+  }, [connected, hasPermission]);
+
+  // Save intensity score to DB
+  useEffect(() => {
+    if (params.sessionId && intensityResult.score > 0) {
+      db.update(workoutSessions)
+        .set({ intensityScore: intensityResult.score })
+        .where(eq(workoutSessions.id, params.sessionId))
+        .catch(console.warn);
+    }
+  }, [intensityResult.score]);
 
   async function handleSaveTemplate() {
     if (!user) return;
@@ -224,6 +265,26 @@ export default function WorkoutSummaryScreen() {
           ))}
         </View>
 
+        {/* Intensity Score card */}
+        {isPro ? (
+          <Card style={styles.intensityCard}>
+            <Text variant="label" style={{ marginBottom: Spacing.md }}>Workout Intensity Score</Text>
+            <View style={[styles.intensityCircle, { borderColor: intensityResult.color }]}>
+              <Text style={[styles.intensityScore, { color: intensityResult.color }]}>{intensityResult.score}</Text>
+            </View>
+            <Text style={[styles.intensityLabel, { color: intensityResult.color }]}>{intensityResult.label}</Text>
+          </Card>
+        ) : (
+          <TouchableOpacity onPress={() => router.push('/paywall' as any)} activeOpacity={0.8}>
+            <Card style={styles.intensityCard}>
+              <Text variant="label" style={{ marginBottom: Spacing.xs }}>Intensity Score 🔒</Text>
+              <Text variant="caption" style={{ color: Colors.textMuted, textAlign: 'center' }}>
+                PRO: See how hard each session was
+              </Text>
+            </Card>
+          </TouchableOpacity>
+        )}
+
         {/* Muscles worked */}
         {muscles.length > 0 && (
           <Card style={styles.musclesCard}>
@@ -236,6 +297,37 @@ export default function WorkoutSummaryScreen() {
                   </Text>
                 </View>
               ))}
+            </View>
+          </Card>
+        )}
+
+        {/* HR Zone Summary */}
+        {hrData && (hrData.averageHR || hrData.peakHR) && (
+          <Card style={styles.hrCard}>
+            <Text variant="label" style={{ marginBottom: Spacing.md }}>💓 Heart Rate Summary</Text>
+            <View style={styles.hrStats}>
+              {hrData.averageHR ? (
+                <Text variant="body" style={styles.hrStatText}>Avg: <Text style={styles.hrStatValue}>{hrData.averageHR} BPM</Text></Text>
+              ) : null}
+              {hrData.peakHR ? (
+                <Text variant="body" style={styles.hrStatText}>Peak: <Text style={styles.hrStatValue}>{hrData.peakHR} BPM</Text></Text>
+              ) : null}
+            </View>
+            <View style={styles.hrZones}>
+              {(['z1', 'z2', 'z3', 'z4', 'z5'] as const).map((zoneKey) => {
+                const zoneInfo = getHRZoneInfo(zoneKey);
+                const zoneData = hrData.zones[zoneKey];
+                return (
+                  <View key={zoneKey} style={styles.hrZoneRow}>
+                    <Text style={[styles.hrZoneLabel, { color: zoneInfo.color }]}>{zoneInfo.label}</Text>
+                    <View style={styles.hrZoneBarBg}>
+                      <View style={[styles.hrZoneBarFill, { backgroundColor: zoneInfo.color, width: `${zoneData.percentage}%` as any }]} />
+                    </View>
+                    <Text style={styles.hrZonePct}>{zoneData.percentage}%</Text>
+                    <Text style={styles.hrZoneMin}>{zoneData.minutes}m</Text>
+                  </View>
+                );
+              })}
             </View>
           </Card>
         )}
@@ -329,6 +421,13 @@ const styles = StyleSheet.create({
   },
   muscleChipText: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, textTransform: 'uppercase' },
   prCard: { width: '100%' },
+  intensityCard: { width: '100%', alignItems: 'center', gap: Spacing.sm },
+  intensityCircle: {
+    width: 72, height: 72, borderRadius: 36, borderWidth: 3,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  intensityScore: { fontSize: FontSize.xxxl, fontWeight: FontWeight.heavy },
+  intensityLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.bold, textTransform: 'uppercase', letterSpacing: 1 },
   homeBtn: { width: '100%', marginTop: Spacing.md },
   templateBtn: { alignItems: 'center', paddingVertical: Spacing.md },
   templateBtnText: { fontSize: FontSize.sm, color: Colors.textSecondary, fontWeight: FontWeight.bold },
@@ -355,4 +454,15 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   shareBtnText: { fontSize: FontSize.sm, color: Colors.primary, fontWeight: FontWeight.bold },
+  hrCard: { width: '100%', gap: Spacing.sm },
+  hrStats: { flexDirection: 'row', gap: Spacing.xl, marginBottom: Spacing.sm },
+  hrStatText: { fontSize: FontSize.base, color: Colors.textSecondary },
+  hrStatValue: { fontWeight: FontWeight.bold, color: Colors.textPrimary },
+  hrZones: { gap: Spacing.sm },
+  hrZoneRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  hrZoneLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.bold, width: 64, textTransform: 'uppercase' },
+  hrZoneBarBg: { flex: 1, height: 6, borderRadius: 3, backgroundColor: '#2a2a2a', overflow: 'hidden' },
+  hrZoneBarFill: { height: 6, borderRadius: 3 },
+  hrZonePct: { fontSize: FontSize.xs, color: Colors.textSecondary, width: 30, textAlign: 'right' },
+  hrZoneMin: { fontSize: FontSize.xs, color: Colors.textMuted, width: 28, textAlign: 'right' },
 });

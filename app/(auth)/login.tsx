@@ -23,7 +23,7 @@ export default function LoginScreen() {
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
       <View style={styles.inner}>
         <Text variant="display" style={styles.logo}>🔥</Text>
-        <Text variant="heading" style={styles.title}>GYM BUDDY</Text>
+        <Text variant="heading" style={styles.title}>VOLTREP</Text>
         <Text variant="caption" style={styles.subtitle}>Ignite your potential</Text>
 
         <TextInput

@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase';
 import { db } from '@/db/client';
 import { workoutSets, workoutSessions, exercises } from '@/db/schema';
 import { eq, desc } from 'drizzle-orm';
+import { useHealthPlatformStore } from '../stores/healthPlatform';
 
 function stripMarkdown(text: string): string {
   return text.replace(/^```(?:json)?\s*/m, '').replace(/\s*```\s*$/m, '').trim();
@@ -212,12 +213,29 @@ export async function generateWorkoutPlan(
     }
   }
 
+  const { readinessScore, readinessLabel, readinessData, connected } = useHealthPlatformStore.getState()
+  const readinessContext = (readinessScore !== null && connected)
+    ? `\n\nRECOVERY STATUS: User's current readiness score is ${readinessScore}/100 (${readinessLabel} Readiness).${
+        readinessData?.sleepHours ? ` Sleep last night: ${readinessData.sleepHours.toFixed(1)}h.` : ''
+      }${
+        readinessData?.hrv ? ` HRV: ${readinessData.hrv}ms.` : ''
+      }${
+        readinessData?.restingHr ? ` Resting HR: ${readinessData.restingHr}bpm.` : ''
+      }${
+        readinessScore < 50
+          ? ' IMPORTANT: User is fatigued — suggest lighter weights, fewer sets, or an active recovery day. Do not push max intensity.'
+          : readinessScore >= 80
+            ? ' User is well-recovered — safe to suggest higher intensity and progressive overload today.'
+            : ' User has moderate recovery — standard workout is appropriate.'
+      }`
+    : ''
+
   const prompt = `Design a ${muscleGroups.join('+')} workout for a ${fitnessLevel} (goal: ${goal ?? 'general fitness'}).${rpeContext ? ` ${rpeContext}` : ''}
 Exercises: ${exerciseList || 'standard gym equipment'}
 
 Reply with ONLY this JSON (no markdown, no extra text):
 {"title":"X","note":"1 tip","ex":[{"n":"name","s":4,"r":"8-10","w":60}]}
-Pick exactly 4 exercises. w = ~85% of PR kg if known, else beginner/intermediate/advanced default.`;
+Pick exactly 4 exercises. w = ~85% of PR kg if known, else beginner/intermediate/advanced default.${readinessContext}`;
 
   // Try AI plan — fall back to local plan if AI fails or returns no exercises
   let parsed: any = null;

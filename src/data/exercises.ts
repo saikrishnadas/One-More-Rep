@@ -4,6 +4,7 @@ export interface ExerciseData {
   primaryMuscle: string;
   subMuscles: string[];
   equipment: string;
+  exerciseType?: 'strength' | 'cardio_distance' | 'cardio_time' | 'weighted_distance';
 }
 
 export const EXERCISES: ExerciseData[] = [
@@ -88,13 +89,27 @@ export const EXERCISES: ExerciseData[] = [
   { id: 'ex-068', name: 'Kettlebell Swing',          primaryMuscle: 'glutes',    subMuscles: ['hamstrings','lower_back'],        equipment: 'kettlebell' },
   { id: 'ex-069', name: 'Farmer Walk',               primaryMuscle: 'traps',     subMuscles: ['forearms','quads'],               equipment: 'dumbbell' },
   { id: 'ex-070', name: 'Dumbbell Romanian Deadlift',primaryMuscle: 'hamstrings',subMuscles: ['glutes','lower_back'],            equipment: 'dumbbell' },
+  // HYROX / CARDIO
+  { id: 'ex-h01', name: 'Running',              primaryMuscle: 'cardio',    subMuscles: ['quads','calves','hamstrings','glutes'],        equipment: 'none',          exerciseType: 'cardio_distance' },
+  { id: 'ex-h02', name: 'SkiErg',               primaryMuscle: 'cardio',    subMuscles: ['lats','shoulders','triceps','abs'],            equipment: 'machine',       exerciseType: 'cardio_distance' },
+  { id: 'ex-h03', name: 'Rowing',               primaryMuscle: 'cardio',    subMuscles: ['back','biceps','quads','glutes'],              equipment: 'machine',       exerciseType: 'cardio_distance' },
+  { id: 'ex-h04', name: 'Sled Push',            primaryMuscle: 'quads',     subMuscles: ['glutes','calves','shoulders'],                 equipment: 'sled',          exerciseType: 'weighted_distance' },
+  { id: 'ex-h05', name: 'Sled Pull',            primaryMuscle: 'back',      subMuscles: ['biceps','quads','hamstrings'],                 equipment: 'sled',          exerciseType: 'weighted_distance' },
+  { id: 'ex-h06', name: 'Burpee Broad Jump',    primaryMuscle: 'cardio',    subMuscles: ['quads','chest','shoulders','glutes'],          equipment: 'bodyweight',    exerciseType: 'cardio_time' },
+  { id: 'ex-h07', name: 'Farmers Carry',        primaryMuscle: 'traps',     subMuscles: ['forearms','quads','abs'],                      equipment: 'dumbbell',      exerciseType: 'weighted_distance' },
+  { id: 'ex-h08', name: 'Sandbag Lunges',       primaryMuscle: 'quads',     subMuscles: ['glutes','hamstrings','abs'],                   equipment: 'sandbag',       exerciseType: 'weighted_distance' },
+  { id: 'ex-h09', name: 'Wall Balls',           primaryMuscle: 'quads',     subMuscles: ['shoulders','glutes','triceps'],                equipment: 'medicine_ball', exerciseType: 'strength' },
+  { id: 'ex-h10', name: 'Assault Bike',         primaryMuscle: 'cardio',    subMuscles: ['quads','shoulders','abs'],                     equipment: 'machine',       exerciseType: 'cardio_distance' },
+  { id: 'ex-h11', name: 'Treadmill Run',        primaryMuscle: 'cardio',    subMuscles: ['quads','calves','hamstrings'],                 equipment: 'machine',       exerciseType: 'cardio_distance' },
+  { id: 'ex-h12', name: 'Jump Rope',            primaryMuscle: 'cardio',    subMuscles: ['calves','shoulders','abs'],                    equipment: 'bodyweight',    exerciseType: 'cardio_time' },
 ];
 
 export const MUSCLE_GROUPS = [
   'chest', 'back', 'shoulders', 'biceps', 'triceps',
-  'quads', 'hamstrings', 'glutes', 'calves', 'abs', 'traps',
+  'quads', 'hamstrings', 'glutes', 'calves', 'abs', 'traps', 'cardio',
 ] as const;
 
 export const EQUIPMENT_TYPES = [
   'barbell', 'dumbbell', 'cable', 'machine', 'bodyweight', 'kettlebell',
+  'sled', 'sandbag', 'medicine_ball', 'none',
 ] as const;

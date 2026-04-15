@@ -18,6 +18,9 @@ import { formatDuration, calculateWorkoutXp } from '@/lib/utils';
 import * as Haptics from 'expo-haptics';
 import { X, Dumbbell } from 'lucide-react-native';
 import { getMuscleRecovery, MuscleRecovery } from '@/lib/muscle-recovery';
+import HeartRateCard from '@/components/workout/HeartRateCard';
+import { useHealthPlatformStore } from '@/stores/healthPlatform';
+import { useSubscriptionStore } from '@/stores/subscription';
 
 export default function ActiveWorkoutScreen() {
   const {
@@ -27,6 +30,9 @@ export default function ActiveWorkoutScreen() {
     finishWorkout, discardWorkout, tick,
   } = useWorkoutStore();
   const { user, profile } = useAuthStore();
+  const { startHeartRateMonitoring, stopHeartRateMonitoring } = useHealthPlatformStore();
+  const liveHeartRate = useHealthPlatformStore((s) => s.liveHeartRate);
+  const userAge = (profile as any)?.age ?? 30;
   const restTimerActive = useRestTimerStore((s) => s.active);
   const [showSearch, setShowSearch] = useState(false);
   const [muscleRecovery, setMuscleRecovery] = useState<Record<string, MuscleRecovery>>({});
@@ -43,7 +49,10 @@ export default function ActiveWorkoutScreen() {
   // Load muscle recovery status
   useEffect(() => {
     if (!user) return;
-    getMuscleRecovery(user.id, profile?.goal).then(setMuscleRecovery);
+    getMuscleRecovery(user.id, profile?.goal, {
+      readinessScore: useHealthPlatformStore.getState().readinessScore,
+      isPro: useSubscriptionStore.getState().isPro,
+    }).then(setMuscleRecovery);
   }, [user?.id]);
 
   // Timer
@@ -51,6 +60,18 @@ export default function ActiveWorkoutScreen() {
     timerRef.current = setInterval(() => tick(), 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, []);
+
+  // Heart rate monitoring lifecycle
+  useEffect(() => {
+    startHeartRateMonitoring(userAge);
+    return () => stopHeartRateMonitoring();
+  }, []);
+
+  // Forward live HR to rest timer store so HR recovery bar works
+  useEffect(() => {
+    const { setCurrentHr } = useRestTimerStore.getState();
+    setCurrentHr(liveHeartRate, userAge);
+  }, [liveHeartRate, userAge]);
 
   const totalVolume = exercises
     .flatMap((e) => e.sets.filter((s) => s.completed))
@@ -137,6 +158,8 @@ export default function ActiveWorkoutScreen() {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
+        <HeartRateCard />
+
         {exercises.length === 0 && (
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>💪</Text>

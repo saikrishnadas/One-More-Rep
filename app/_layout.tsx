@@ -13,6 +13,8 @@ import * as Notifications from 'expo-notifications';
 import { registerForPushNotifications, setupNotificationCategories } from '@/lib/notifications';
 import { useHabitStore } from '@/stores/habits';
 import { formatDate } from '@/lib/utils';
+import { useSubscriptionStore } from '@/stores/subscription';
+import { initRevenueCat, loginRevenueCat, logoutRevenueCat } from '@/lib/revenueCat';
 
 const queryClient = new QueryClient();
 
@@ -20,6 +22,11 @@ export default function RootLayout() {
   const { setSession, fetchProfile } = useAuthStore();
 
   useEffect(() => {
+    // Initialize RevenueCat then hydrate subscription state
+    initRevenueCat().then(() => {
+      useSubscriptionStore.getState().checkSubscription();
+    });
+
     // Initialize local DB and seed exercises
     initDatabase().then(() => seedExercises());
     registerForPushNotifications().catch(console.warn);
@@ -27,12 +34,20 @@ export default function RootLayout() {
     // Listen for auth changes
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) fetchProfile();
+      if (session) {
+        fetchProfile();
+        loginRevenueCat(session.user.id);
+      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (session) fetchProfile();
+      if (session) {
+        fetchProfile();
+        loginRevenueCat(session.user.id);
+      } else {
+        logoutRevenueCat();
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -77,6 +92,7 @@ export default function RootLayout() {
           <Stack.Screen name="cheat-day" options={{ presentation: 'card', headerShown: false }} />
           <Stack.Screen name="goal-estimate" options={{ presentation: 'card', headerShown: false }} />
           <Stack.Screen name="progress-photos" options={{ presentation: 'card', headerShown: false }} />
+          <Stack.Screen name="paywall" options={{ presentation: 'modal', headerShown: false }} />
         </Stack>
       </QueryClientProvider>
     </GestureHandlerRootView>

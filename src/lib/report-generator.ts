@@ -3,6 +3,7 @@ import { workoutSessions, workoutSets, nutritionLogs, habitLogs, bodyMeasurement
 import { eq, and, gte } from 'drizzle-orm';
 import { supabase } from '@/lib/supabase';
 import { formatDate } from '@/lib/utils';
+import { readSleepData, readRestingHeartRate, readStepCount, isHealthPlatformAvailable } from '@/lib/health-platform';
 
 export interface PeriodReport {
   periodStart: string;
@@ -18,6 +19,14 @@ export interface PeriodReport {
   weightChange: number | null;
   aiNarrative: string;
   volumeTrend: { label: string; volume: number }[];
+  // Health data (PRO — null when not connected)
+  avgSleepHours: number | null;
+  sleepTrend: { label: string; hours: number }[];   // 10-day sleep bar chart
+  avgReadinessScore: number | null;
+  avgIntensityScore: number | null;
+  restingHrAvg: number | null;
+  restingHrChange: number | null;  // vs previous 10 days (negative = improving)
+  avgDailySteps: number | null;
 }
 
 export async function generateReport(userId: string): Promise<PeriodReport> {
@@ -88,6 +97,76 @@ export async function generateReport(userId: string): Promise<PeriodReport> {
     volumeTrend.push({ label: d.toLocaleDateString('en-US', { weekday: 'short' }), volume: Math.round(vol) });
   }
 
+  // Health data collection (for PRO users with watch connected)
+  let avgSleepHours: number | null = null;
+  let sleepTrend: { label: string; hours: number }[] = [];
+  let avgReadinessScore: number | null = null;
+  let avgIntensityScore: number | null = null;
+  let restingHrAvg: number | null = null;
+  let restingHrChange: number | null = null;
+  let avgDailySteps: number | null = null;
+
+  // Avg intensity from DB (no health platform needed)
+  const sessionsWithIntensity = periodSessions.filter(s => s.intensityScore != null);
+  if (sessionsWithIntensity.length > 0) {
+    avgIntensityScore = Math.round(
+      sessionsWithIntensity.reduce((sum, s) => sum + (s.intensityScore ?? 0), 0) / sessionsWithIntensity.length
+    );
+  }
+
+  try {
+    if (isHealthPlatformAvailable()) {
+      // Sleep data for last 10 days
+      const sleepPromises = [];
+      for (let i = 9; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(now.getDate() - i);
+        sleepPromises.push(
+          readSleepData(formatDate(d)).then(data => ({
+            label: d.toLocaleDateString('en-US', { weekday: 'short' }),
+            hours: data.totalHours,
+          })).catch(() => ({
+            label: d.toLocaleDateString('en-US', { weekday: 'short' }),
+            hours: 0,
+          }))
+        );
+      }
+      sleepTrend = await Promise.all(sleepPromises);
+      const validSleep = sleepTrend.filter(s => s.hours > 0);
+      avgSleepHours = validSleep.length > 0
+        ? Math.round(validSleep.reduce((sum, s) => sum + s.hours, 0) / validSleep.length * 10) / 10
+        : null;
+
+      // Resting heart rate
+      const restingHr = await readRestingHeartRate(10);
+      if (restingHr.value > 0) {
+        restingHrAvg = Math.round(restingHr.value);
+        // Change vs 7-day avg (negative = improving)
+        if (restingHr.sevenDayAvg > 0) {
+          restingHrChange = Math.round(restingHr.value - restingHr.sevenDayAvg);
+        }
+      }
+
+      // Steps (10-day avg)
+      let totalSteps = 0;
+      let stepDays = 0;
+      for (let i = 9; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(now.getDate() - i);
+        try {
+          const steps = await readStepCount(formatDate(d));
+          if (steps > 0) {
+            totalSteps += steps;
+            stepDays++;
+          }
+        } catch {}
+      }
+      avgDailySteps = stepDays > 0 ? Math.round(totalSteps / stepDays) : null;
+    }
+  } catch {
+    // Health data is optional — silently continue
+  }
+
   const prompt = `You are a personal trainer writing a 10-day progress report for an athlete. Write a warm, motivational 2-3 paragraph summary. Data:
 - Workouts: ${workoutsCompleted} in 10 days
 - Total volume: ${Math.round(totalVolumeKg)} kg
@@ -97,6 +176,10 @@ export async function generateReport(userId: string): Promise<PeriodReport> {
 - Avg calories: ${avgCalories} kcal/day, protein: ${avgProteinG}g/day
 - Habit completion: ${habitCompletionPct}%
 - Weight change: ${weightChange != null ? `${weightChange > 0 ? '+' : ''}${weightChange.toFixed(1)} kg` : 'not tracked'}
+${avgSleepHours != null ? `- Avg sleep: ${avgSleepHours}h/night` : ''}
+${avgIntensityScore != null ? `- Avg workout intensity: ${avgIntensityScore}/100` : ''}
+${restingHrAvg != null ? `- Resting HR: ${restingHrAvg} bpm (${restingHrChange != null && restingHrChange <= 0 ? 'improving' : 'elevated'})` : ''}
+${avgDailySteps != null ? `- Avg daily steps: ${avgDailySteps}` : ''}
 Write: 1) What went well, 2) What to focus on next 10 days, 3) One specific motivational line. Keep it personal and encouraging.`;
 
   let aiNarrative = 'Great work this period! Keep pushing forward.';
@@ -115,5 +198,7 @@ Write: 1) What went well, 2) What to focus on next 10 days, 3) One specific moti
     workoutsCompleted, totalVolumeKg, avgSessionDurationMin,
     topMuscles, newPRs, avgCalories, avgProteinG,
     habitCompletionPct, weightChange, aiNarrative, volumeTrend,
+    avgSleepHours, sleepTrend, avgReadinessScore, avgIntensityScore,
+    restingHrAvg, restingHrChange, avgDailySteps,
   };
 }
