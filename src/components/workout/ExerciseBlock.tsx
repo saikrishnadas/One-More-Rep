@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from '@/components/ui/Text';
 import { X, Flame } from 'lucide-react-native';
@@ -6,8 +6,11 @@ import { SetRow } from './SetRow';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/lib/constants';
 import type { ActiveExercise } from '@/stores/workout';
 import { useWorkoutStore } from '@/stores/workout';
-import { getSuggestion, OverloadSuggestion } from '@/lib/progressive-overload';
+import { getSuggestion, OverloadSuggestion, applyReadinessAdjustment } from '@/lib/progressive-overload';
 import { useAuthStore } from '@/stores/auth';
+import { useHealthPlatformStore } from '@/stores/healthPlatform';
+import { useSubscriptionStore } from '@/stores/subscription';
+import { router } from 'expo-router';
 import type { RecoveryStatus } from '@/lib/muscle-recovery';
 import { getWarmupSets } from '@/lib/warmup-calculator';
 
@@ -56,6 +59,17 @@ export function ExerciseBlock({
     getSuggestion(exercise.exerciseId, user.id).then(setSuggestion);
   }, [exercise.exerciseId, user?.id]);
 
+  const readinessScore = useHealthPlatformStore((s) => s.readinessScore);
+  const isPro = useSubscriptionStore((s) => s.isPro);
+
+  const displaySuggestion = useMemo(() => {
+    if (!suggestion) return null;
+    if (isPro && readinessScore !== null) {
+      return applyReadinessAdjustment(suggestion, readinessScore);
+    }
+    return suggestion;
+  }, [suggestion, isPro, readinessScore]);
+
   function handleAddWarmups() {
     const targetWeight = exercise.sets.find((s) => s.weightKg > 0)?.weightKg ?? 0;
     if (!targetWeight) return;
@@ -89,12 +103,24 @@ export function ExerciseBlock({
       {suggestion && (
         <View style={styles.suggestionChip}>
           <Text style={styles.suggestionText}>
-            {'\u{1F4A1}'} {suggestion.message}
+            {'\u{1F4A1}'} {displaySuggestion!.message}
             {suggestion.lastDate
               ? ` \u00b7 was ${suggestion.lastWeightKg}kg \u00d7 ${suggestion.lastReps} (${suggestion.lastDate})`
               : ''}
           </Text>
         </View>
+      )}
+
+      {suggestion && !isPro && readinessScore !== null && (
+        <TouchableOpacity
+          style={styles.proHint}
+          onPress={() => router.push('/paywall')}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.proHintText}>
+            🔒 PRO: Adjust for your readiness ({readinessScore}/100)
+          </Text>
+        </TouchableOpacity>
       )}
 
       <View style={styles.colHeaders}>
@@ -190,4 +216,13 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
   },
   addSetText: { fontSize: FontSize.sm, color: Colors.textSecondary, fontWeight: FontWeight.bold },
+  proHint: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    marginBottom: Spacing.sm,
+  },
+  proHintText: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+  },
 });

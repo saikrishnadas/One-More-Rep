@@ -114,3 +114,23 @@ export async function getSuggestion(exerciseId: string, userId: string): Promise
     return null;
   }
 }
+
+/**
+ * Adjust a progressive overload suggestion based on today's readiness score.
+ * Factor: 0.85 at readiness 0, 1.0 at readiness 100.
+ */
+export function applyReadinessAdjustment(
+  suggestion: OverloadSuggestion,
+  readinessScore: number | null,
+): OverloadSuggestion {
+  if (readinessScore === null) return suggestion;
+
+  const factor = 0.85 + 0.15 * (readinessScore / 100);
+  const adjustedWeight = Math.round((suggestion.suggestedWeightKg * factor) / 2.5) * 2.5;
+
+  return {
+    ...suggestion,
+    suggestedWeightKg: adjustedWeight,
+    message: `Try ${adjustedWeight} kg \u00d7 ${suggestion.suggestedReps} (readiness ${readinessScore})`,
+  };
+}
