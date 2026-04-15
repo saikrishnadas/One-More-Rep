@@ -13,13 +13,17 @@ import { VolumeChart } from '@/components/stats/VolumeChart';
 import { MuscleBreakdown } from '@/components/stats/MuscleBreakdown';
 import { PRList } from '@/components/stats/PRList';
 import { OneRMChart, OneRMDataPoint } from '@/components/stats/OneRMChart';
+import { IntensityChart } from '@/components/stats/IntensityChart';
+import { TrainingWindowChart } from '@/components/stats/TrainingWindowChart';
 import type { PRRecord } from '@/components/stats/PRList';
 import { ChevronLeft } from 'lucide-react-native';
 import { Colors, Spacing, FontSize, FontWeight, Radius } from '@/lib/constants';
 import { formatDate, formatVolume, formatDuration } from '@/lib/utils';
+import { useSubscriptionStore } from '@/stores/subscription';
 
 export default function WorkoutStatsScreen() {
   const { user } = useAuthStore();
+  const { isPro } = useSubscriptionStore();
   const [sessions, setSessions] = useState<any[]>([]);
   const [sets, setSets] = useState<any[]>([]);
   const [exerciseMap, setExerciseMap] = useState<Record<string, string>>({});
@@ -145,6 +149,19 @@ export default function WorkoutStatsScreen() {
       .slice(0, 10);
   }, [sets, sessions, exerciseMap]);
 
+  // Intensity trend: last 20 sessions with an intensity score
+  const intensityData = useMemo(() => {
+    return sessions
+      .filter(s => s.intensityScore != null)
+      .slice(-20)
+      .map(s => {
+        const score = s.intensityScore as number;
+        const date = new Date(s.startedAt as any).toISOString().split('T')[0].slice(5); // MM-DD
+        const color = score < 40 ? '#22c55e' : score < 70 ? '#f59e0b' : '#ef4444';
+        return { date, score, color };
+      });
+  }, [sessions]);
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -194,6 +211,38 @@ export default function WorkoutStatsScreen() {
         <Card>
           <Text variant="title" style={styles.cardTitle}>Personal Records {'\u{1F3C6}'}</Text>
           <PRList records={prRecords} />
+        </Card>
+
+        {/* Intensity Trend */}
+        <Card>
+          <Text variant="title" style={styles.cardTitle}>Intensity Trend</Text>
+          {isPro ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <IntensityChart data={intensityData} />
+            </ScrollView>
+          ) : (
+            <View style={styles.lockedSection}>
+              <Text variant="label" style={{ marginBottom: Spacing.xs }}>Intensity Trend {'\u{1F512}'}</Text>
+              <Text variant="caption" style={{ textAlign: 'center' }}>PRO: Track how hard your sessions are over time</Text>
+            </View>
+          )}
+        </Card>
+
+        {/* Best Training Window */}
+        <Card style={{ marginTop: Spacing.md, padding: Spacing.md }}>
+          <Text variant="title" style={{ marginBottom: Spacing.sm }}>Best Training Window</Text>
+          {isPro ? (
+            <TrainingWindowChart userId={user?.id ?? ''} />
+          ) : (
+            <TouchableOpacity onPress={() => router.push('/paywall')} activeOpacity={0.7}>
+              <Text style={{ color: Colors.textMuted, fontSize: FontSize.md }}>
+                Best Training Window 🔒
+              </Text>
+              <Text style={{ color: Colors.textMuted, fontSize: FontSize.sm, marginTop: Spacing.xs }}>
+                PRO: Discover when you&apos;re strongest
+              </Text>
+            </TouchableOpacity>
+          )}
         </Card>
 
         {/* 1RM Progress */}
@@ -254,4 +303,5 @@ const styles = StyleSheet.create({
   statCard: { width: '47%', alignItems: 'center', gap: 4 },
   statValue: { fontSize: FontSize.xxl, fontWeight: FontWeight.heavy, color: Colors.primary },
   cardTitle: { marginBottom: Spacing.md },
+  lockedSection: { padding: Spacing.lg, alignItems: 'center' },
 });
